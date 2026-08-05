@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: "1.17"
+            otp: "27"
+          - elixir: "1.20"
+            otp: "28"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix test
+
+  golden:
+    name: Golden test (fresh phx.new app)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: starter
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.20"
+          otp-version: "28"
+      - name: Generate a fresh Phoenix app
+        run: |
+          mix archive.install hex phx_new --force
+          mix phx.new demo --no-install
+      - name: Add starter as a path dependency
+        working-directory: demo
+        run: |
+          sed -i 's|{:phoenix,|{:starter, path: "../starter", only: :dev},\n      {:phoenix,|' mix.exs
+          mix deps.get
+      - name: Generate and run the workflow
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          mix starter.new --yes
+          mix starter.run --yes 2>&1 | tee starter_run.log
+          mix deps.get
+      - name: No steps silently no-oped
+        working-directory: demo
+        run: |
+          if grep -E "Nothing was modified|skipped (adding|removing|generating|mounting)|was skipped" starter_run.log; then
+            echo "A workflow step no-oped against fresh phx.new output (see warnings above)."
+            exit 1
+          fi
+      - name: App still compiles without warnings
+        working-directory: demo
+        run: mix compile --warnings-as-errors
+      - name: Migrations run
+        working-directory: demo
+        run: mix ecto.create && mix ecto.migrate
+      - name: App tests still pass
+        working-directory: demo
+        run: mix test

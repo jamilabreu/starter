@@ -1,0 +1,16 @@
+# Build artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+
+# Crash dumps and archives
+erl_crash.dump
+*.ez
+starter-*.tar
+
+# Temporary files, e.g. from tests
+/tmp/
+
+# macOS system files
+.DS_Store
