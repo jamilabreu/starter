@@ -81,6 +81,18 @@ defmodule Mix.Tasks.Starter.NewTest do
     assert content =~ "(only with --gigalixir)"
   end
 
+  test "sort_deps is queued after the installs so it runs last" do
+    content = generated_workflow()
+
+    assert content =~ ~s({:queue, "starter.gen.sort_deps")
+
+    {sort_pos, _} = :binary.match(content, ~s({:queue, "starter.gen.sort_deps"))
+    {install_pos, _} = :binary.match(content, "{:install, :oban}")
+    assert install_pos < sort_pos
+
+    refute content =~ "{:gen, :sort_deps}"
+  end
+
   describe "--from" do
     defp generated_from_shared do
       igniter =

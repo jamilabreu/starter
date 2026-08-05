@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-running the bun step on an already-configured app crashed rewrite's
   formatter; its dep add and config edits are now skip-on-rerun.
 
+### Changed
+
+- The generated workflow queues `sort_deps` last instead of running it
+  in-run, so dependencies added by the `{:install, ...}` installers get
+  sorted too. Ordering guidance added to the `Starter.Workflow` docs.
+
 ## [0.1.1] - 2026-08-04
 
 ### Fixed

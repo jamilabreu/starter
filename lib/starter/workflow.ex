@@ -25,6 +25,13 @@ defmodule Starter.Workflow do
   could never be answered. Confirming the workflow's diff is the approval
   for everything it queues; queued tasks must tolerate the `--yes` flag
   (every Igniter task does).
+
+  ## Ordering
+
+  In-run steps apply first, in list order. Queued steps then run in list
+  order against the applied project. To guarantee a step runs last — after
+  the installers have added their deps — express it as a queued task and
+  place it at the end of the list, e.g. `{:queue, "starter.gen.sort_deps"}`.
     * `{:task, "some.igniter.task"}` — compose any Igniter-aware Mix task,
       with optional argv and an `if:` option as a fourth element; non-Igniter
       tasks are skipped with a warning

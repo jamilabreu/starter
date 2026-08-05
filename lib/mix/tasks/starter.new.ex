@@ -76,8 +76,9 @@ defmodule Mix.Tasks.Starter.New do
      ]},
     {"Tidy mix.exs",
      [
-       {:gen, :sort_deps},
-       {:gen, :ecto_force_drop}
+       {:gen, :ecto_force_drop},
+       # Queued last so it also sorts the deps the installers above add
+       {:queue, "starter.gen.sort_deps"}
      ]}
   ]
 
