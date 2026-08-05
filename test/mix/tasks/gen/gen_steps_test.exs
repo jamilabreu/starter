@@ -207,6 +207,32 @@ defmodule Mix.Tasks.Starter.Gen.StepsTest do
 
       assert Enum.any?(igniter.warnings, &(&1 =~ "skipped generating the home page"))
     end
+
+    test "updates the page controller test to match the new page" do
+      page_test = """
+      defmodule TestWeb.PageControllerTest do
+        use TestWeb.ConnCase
+
+        test "GET /", %{conn: conn} do
+          conn = get(conn, ~p"/")
+          assert html_response(conn, 200) =~ "Peace of mind from prototype to production"
+        end
+      end
+      """
+
+      igniter =
+        test_project(
+          files: %{
+            "lib/test_web/controllers/page_html/home.html.heex" => "<div>old</div>\n",
+            "test/test_web/controllers/page_controller_test.exs" => page_test
+          }
+        )
+        |> Igniter.compose_task(Mix.Tasks.Starter.Gen.MinimalHomePage)
+
+      diff = diff(igniter, only: "test/test_web/controllers/page_controller_test.exs")
+      assert diff =~ "assert html_response(conn, 200) =~ \"Home Page\""
+      refute diff =~ ~r/\+\s*\|.*Peace of mind/
+    end
   end
 
   describe "gigalixir" do

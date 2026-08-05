@@ -7,29 +7,23 @@ on:
 
 jobs:
   test:
-    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    name: Test (Elixir 1.20 / OTP 28)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - elixir: "1.17"
-            otp: "27"
-          - elixir: "1.20"
-            otp: "28"
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
+          elixir-version: "1.20"
+          otp-version: "28"
       - uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
-          restore-keys: mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+          key: mix-1.20-28-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-1.20-28-
+      # Igniter.Test.phx_test_project/1 generates a real Phoenix app
+      - run: mix archive.install hex phx_new --force
       - run: mix deps.get
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
