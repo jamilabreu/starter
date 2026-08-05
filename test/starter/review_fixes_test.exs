@@ -126,9 +126,13 @@ defmodule Starter.ReviewFixesTest do
       tasks = Enum.map(igniter.tasks, fn {task, _argv} -> task end)
       assert tasks == ["igniter.install", "starter.add"]
 
-      assert {_, argv} = Enum.find(igniter.tasks, fn {task, _} -> task == "starter.add" end)
-      assert "oban_pro" in argv
-      assert "--yes" in argv
+      # Exactly the task args plus --yes: the workflow's own flags must not
+      # leak into subprocess argv (strict option parsers reject them).
+      assert {_, ["oban_pro", "--yes"]} =
+               Enum.find(igniter.tasks, fn {task, _} -> task == "starter.add" end)
+
+      assert {_, ["oban", "--yes"]} =
+               Enum.find(igniter.tasks, fn {task, _} -> task == "igniter.install" end)
 
       without_flag = Starter.Runner.run(test_project(), QueueWorkflow, [])
       refute Enum.any?(without_flag.tasks, fn {task, _} -> task == "starter.add" end)

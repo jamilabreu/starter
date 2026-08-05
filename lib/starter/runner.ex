@@ -11,6 +11,14 @@ defmodule Starter.Runner do
   @supported_phoenix_series "1.8"
   @phoenix_check_version "1.8.99"
 
+  # Igniter runs queued tasks via Mix.shell().cmd, which has no stdin — a
+  # prompting subprocess would stall forever waiting for input that can
+  # never arrive, so queued tasks always run with --yes (confirming the
+  # workflow is the approval for what it queues). Nothing else is forwarded:
+  # the workflow's custom flags have already done their job selecting steps,
+  # and leaking them crashes queued tasks with strict option parsers.
+  @queued_flags ["--yes"]
+
   @doc """
   Runs every step of `workflow` in order, skipping optional steps whose
   flag is absent from `opts`.
@@ -75,28 +83,17 @@ defmodule Starter.Runner do
         # (e.g. oban.install) when it ships one, falling back to a plain dep
         # add. It cannot be composed mid-run, so it is queued to run right
         # after the workflow's changes apply.
-        Igniter.add_task(igniter, "igniter.install", [to_string(package) | queued_flags(igniter)])
+        Igniter.add_task(igniter, "igniter.install", [to_string(package) | @queued_flags])
 
       {:queue, task, argv} ->
         # Queued tasks run in order after the workflow's changes apply —
         # the way to sequence work after {:install, ...} steps.
-        Igniter.add_task(igniter, task, argv ++ queued_flags(igniter))
+        Igniter.add_task(igniter, task, argv ++ @queued_flags)
 
       {:workflow, module} ->
         run(igniter, module, opts)
     end
   end
-
-  # Igniter runs queued tasks via Mix.shell().cmd, which has no stdin — a
-  # prompting subprocess would stall forever waiting for input that can
-  # never arrive. Queued tasks therefore always run with --yes; the user
-  # already reviewed and confirmed the workflow that queued them.
-  defp queued_flags(igniter) do
-    Enum.uniq(argv_flags(igniter) ++ ["--yes"])
-  end
-
-  defp argv_flags(%{args: %{argv_flags: flags}}) when is_list(flags), do: flags
-  defp argv_flags(_igniter), do: []
 
   defp expand({kind, name}, _opts) when kind in [:add, :remove, :gen] and is_atom(name) do
     resolve!(kind, name)

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-08-04
+
+### Fixed
+
+- Passing a workflow flag (e.g. `mix starter.run --oban-pro`) crashed the
+  entire queued-task chain: custom flags leaked into subprocess argv and
+  `igniter.install`'s strict option parser rejected them, so no installs
+  ran at all. Queued tasks now receive exactly their own args plus `--yes`.
+- `mix starter.run` failed with "No workflow found" on Mix 1.20.3+:
+  workflow discovery relied on `mix compile` loading the app, which newer
+  Mix no longer does. The app is now loaded explicitly.
+- Re-running the bun step on an already-configured app crashed rewrite's
+  formatter; its dep add and config edits are now skip-on-rerun.
+
 ## [0.1.1] - 2026-08-04
 
 ### Fixed
