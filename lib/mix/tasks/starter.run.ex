@@ -44,6 +44,10 @@ defmodule Mix.Tasks.Starter.Run do
   defp workflow_modules do
     app = Mix.Project.config()[:app]
 
+    # get_key only works on loaded applications, and `mix compile` does not
+    # reliably load the app (Mix version dependent) — load it explicitly.
+    Application.load(app)
+
     case :application.get_key(app, :modules) do
       {:ok, modules} -> find_workflow_modules(modules)
       _ -> []
