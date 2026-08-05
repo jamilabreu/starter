@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-08-04
+
+### Fixed
+
+- Interactive `mix starter.run` (without `--yes`) stalled at the first
+  `{:install, ...}` step: Igniter executes queued tasks through a
+  subprocess with no stdin, so the upstream installer's confirmation
+  prompt could never be answered. Queued tasks (installs included) now
+  always run with `--yes` — confirming the workflow's diff is the
+  approval for everything it queues.
+
 ## [0.1.0] - 2026-08-04
 
 Initial release.

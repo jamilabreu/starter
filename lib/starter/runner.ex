@@ -75,16 +75,24 @@ defmodule Starter.Runner do
         # (e.g. oban.install) when it ships one, falling back to a plain dep
         # add. It cannot be composed mid-run, so it is queued to run right
         # after the workflow's changes apply.
-        Igniter.add_task(igniter, "igniter.install", [to_string(package) | argv_flags(igniter)])
+        Igniter.add_task(igniter, "igniter.install", [to_string(package) | queued_flags(igniter)])
 
       {:queue, task, argv} ->
         # Queued tasks run in order after the workflow's changes apply —
         # the way to sequence work after {:install, ...} steps.
-        Igniter.add_task(igniter, task, argv ++ argv_flags(igniter))
+        Igniter.add_task(igniter, task, argv ++ queued_flags(igniter))
 
       {:workflow, module} ->
         run(igniter, module, opts)
     end
+  end
+
+  # Igniter runs queued tasks via Mix.shell().cmd, which has no stdin — a
+  # prompting subprocess would stall forever waiting for input that can
+  # never arrive. Queued tasks therefore always run with --yes; the user
+  # already reviewed and confirmed the workflow that queued them.
+  defp queued_flags(igniter) do
+    Enum.uniq(argv_flags(igniter) ++ ["--yes"])
   end
 
   defp argv_flags(%{args: %{argv_flags: flags}}) when is_list(flags), do: flags

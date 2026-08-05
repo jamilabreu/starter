@@ -107,6 +107,10 @@ defmodule Starter.ReviewFixesTest do
                task == "igniter.install" and "ash" in argv
              end)
 
+      # Queued subprocesses have no stdin; --yes is always appended so
+      # prompting installers cannot stall the run.
+      assert Enum.all?(igniter.tasks, fn {_task, argv} -> "--yes" in argv end)
+
       refute Enum.any?(igniter.tasks, fn {_task, argv} -> "oban_pro" in argv end)
 
       with_flag = Starter.Runner.run(test_project(), InstallWorkflow, oban_pro: true)
@@ -124,6 +128,7 @@ defmodule Starter.ReviewFixesTest do
 
       assert {_, argv} = Enum.find(igniter.tasks, fn {task, _} -> task == "starter.add" end)
       assert "oban_pro" in argv
+      assert "--yes" in argv
 
       without_flag = Starter.Runner.run(test_project(), QueueWorkflow, [])
       refute Enum.any?(without_flag.tasks, fn {task, _} -> task == "starter.add" end)

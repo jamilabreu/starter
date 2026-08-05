@@ -19,6 +19,12 @@ defmodule Starter.Workflow do
     * `{:queue, "starter.add", ["oban_pro"]}` — queue any Mix task to run
       after the workflow's changes apply; queued tasks run in order, so this
       is how to sequence work after `{:install, ...}` steps
+
+  Queued tasks (including `{:install, ...}`) run non-interactively with
+  `--yes` appended — their subprocesses have no stdin, so a prompt there
+  could never be answered. Confirming the workflow's diff is the approval
+  for everything it queues; queued tasks must tolerate the `--yes` flag
+  (every Igniter task does).
     * `{:task, "some.igniter.task"}` — compose any Igniter-aware Mix task,
       with optional argv and an `if:` option as a fourth element; non-Igniter
       tasks are skipped with a warning

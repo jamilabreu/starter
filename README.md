@@ -92,7 +92,9 @@ mix starter.run
 Nothing is applied blindly: every change is shown as a diff, and you confirm
 before anything touches disk. (`mix starter.run` finds and runs your workflow
 task — invoking it directly as `mix my_app.workflow` does the same thing.)
-When it finishes, set up the database and go:
+After your confirmation, any `{:install, ...}` steps run their packages'
+own installers automatically — your confirmation of the workflow covers
+them. When everything finishes, set up the database and go:
 
 ```bash
 mix ecto.setup
