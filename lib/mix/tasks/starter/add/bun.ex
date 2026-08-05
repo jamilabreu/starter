@@ -22,12 +22,16 @@ defmodule Mix.Tasks.Starter.Add.Bun do
   end
 
   defp add_dep(igniter) do
-    {package, version} = Versions.latest_hex_dep(:bun)
-    runtime = Sourceror.parse_string!("Mix.env() == :dev")
+    if Igniter.Project.Deps.has_dep?(igniter, :bun) do
+      igniter
+    else
+      {package, version} = Versions.latest_hex_dep(:bun)
+      runtime = Sourceror.parse_string!("Mix.env() == :dev")
 
-    igniter
-    |> Igniter.Project.Deps.add_dep({package, version})
-    |> Igniter.Project.Deps.set_dep_option(:bun, :runtime, runtime)
+      igniter
+      |> Igniter.Project.Deps.add_dep({package, version})
+      |> Igniter.Project.Deps.set_dep_option(:bun, :runtime, runtime)
+    end
   end
 
   defp add_package_json(igniter) do
@@ -122,7 +126,17 @@ defmodule Mix.Tasks.Starter.Add.Bun do
     |> Igniter.Project.Deps.remove_dep(:tailwind)
   end
 
+  # Re-merging the ~w() sigil config into a file that already contains it
+  # crashes rewrite's formatter, so config edits are skip-on-rerun.
   defp edit_config(igniter) do
+    if file_contains?(igniter, "config/config.exs", "config :bun") do
+      igniter
+    else
+      do_edit_config(igniter)
+    end
+  end
+
+  defp do_edit_config(igniter) do
     version = Versions.fetch_npm_version("bun") || "1.3.5"
 
     igniter
@@ -173,17 +187,34 @@ defmodule Mix.Tasks.Starter.Add.Bun do
   end
 
   defp edit_config_dev(igniter) do
-    app_name = Igniter.Project.Application.app_name(igniter)
-    endpoint = Module.concat([Helpers.app_web_module(igniter), "Endpoint"])
+    if file_contains?(igniter, "config/dev.exs", "bun_css:") do
+      igniter
+    else
+      app_name = Igniter.Project.Application.app_name(igniter)
+      endpoint = Module.concat([Helpers.app_web_module(igniter), "Endpoint"])
 
-    Igniter.Project.Config.configure(
-      igniter,
-      "dev.exs",
-      app_name,
-      [endpoint, :watchers],
-      bun_css: {Bun, :install_and_run, [:css, ~w(--watch)]},
-      bun_js: {Bun, :install_and_run, [:js, ~w(--sourcemap=inline --watch)]}
-    )
+      Igniter.Project.Config.configure(
+        igniter,
+        "dev.exs",
+        app_name,
+        [endpoint, :watchers],
+        bun_css: {Bun, :install_and_run, [:css, ~w(--watch)]},
+        bun_js: {Bun, :install_and_run, [:js, ~w(--sourcemap=inline --watch)]}
+      )
+    end
+  end
+
+  defp file_contains?(igniter, path, text) do
+    if Igniter.exists?(igniter, path) do
+      igniter = Igniter.include_existing_file(igniter, path)
+
+      igniter.rewrite
+      |> Rewrite.source!(path)
+      |> Rewrite.Source.get(:content)
+      |> String.contains?(text)
+    else
+      false
+    end
   end
 
   defp edit_mix_aliases(igniter) do

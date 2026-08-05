@@ -48,4 +48,16 @@ defmodule Mix.Tasks.Starter.Add.BunTest do
     assert config_diff =~ "config :bun"
     assert config_diff =~ "tailwindcss --input=css/app.css"
   end
+
+  test "is idempotent on re-run instead of crashing the formatter" do
+    igniter =
+      phx_test_project()
+      |> Igniter.compose_task(Mix.Tasks.Starter.Add.Bun)
+      |> apply_igniter!()
+      |> Igniter.compose_task(Mix.Tasks.Starter.Add.Bun)
+
+    assert_unchanged(igniter, "config/config.exs")
+    assert_unchanged(igniter, "config/dev.exs")
+    assert_unchanged(igniter, "mix.exs")
+  end
 end
