@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-08-06
+
+### Fixed
+
+- Running a starter that includes the `tailwind_formatter` step no longer
+  floods the console with
+  `[error] module MyAppWeb.Formatters.ClassFormatter is not loaded and could
+  not be found`. The step arms `attribute_formatters` in `.formatter.exs`
+  immediately, but the formatter's source only reaches disk when the run
+  applies, so the require guard couldn't load it mid-run and
+  `Phoenix.LiveView.HTMLFormatter` logged the error for every HEEx template
+  it formatted — and silently skipped class sorting. The step now loads the
+  module into the running VM itself (preferring an already-loaded module,
+  then the on-disk file, then compiling the generated source), so the run is
+  quiet and Tailwind class sorting applies to the run's own output.
+
 ## [0.3.1] - 2026-08-06
 
 Documentation fixes only — no behavior changes.
