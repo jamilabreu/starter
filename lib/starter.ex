@@ -46,8 +46,8 @@ defmodule Starter do
             {:remove, :topbar},
             {:gen, :gitignore},
             {:add, :credo},
-            {:add, :oban, if: :oban},
-            {:task, "igniter.install", ["ash"]}
+            {:add, :ash},
+            {:add, :oban, if: :oban}
           ]
         end
       end
@@ -73,9 +73,9 @@ defmodule Starter do
     * `{:task, "some.igniter.task"}` — compose any Igniter-aware Mix task,
       with optional argv and an `if:` option as a fourth element; non-Igniter
       tasks are skipped with a warning
-    * `{:queue, "starter.add", ["oban_pro"]}` — queue any Mix task to run
-      after the starter's changes apply; use this only for work that must
-      see the applied project on disk
+    * `{:queue, "some.task", ["--arg"]}` — queue any Mix task to run after
+      the starter's changes apply; use this only for work that must see the
+      applied project on disk
     * `{:starter, OtherStarter}` — include another starter's steps
     * `MyApp.Steps.Custom` — any module implementing `Igniter.Mix.Task`,
       optionally as `{MyApp.Steps.Custom, if: :flag}`

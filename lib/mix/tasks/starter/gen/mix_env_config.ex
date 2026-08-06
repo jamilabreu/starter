@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Starter.Gen.MixEnvConfig do
-  @shortdoc "Adds environment config"
+  @shortdoc "Exposes Mix.env() in app config"
   @moduledoc "Adds `config :app, env: Mix.env()` to `config.exs` so the environment is readable at runtime."
   use Igniter.Mix.Task
 

@@ -1,7 +1,8 @@
 defmodule Starter.Versions do
   @moduledoc """
-  Fetches latest package versions from Hex and npm so generated dependencies
-  start current instead of pinned to whatever Starter shipped with.
+  Fetches latest package versions from Hex, npm, GitHub, and the Oban Pro
+  docs site so generated dependencies start current instead of pinned to
+  whatever Starter shipped with.
 
   Lookups are cached per-run via `:persistent_term` and degrade gracefully:
   when the network is unavailable (or `config :starter, fetch_versions: false`

@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Starter.Gen.GeneratorDefaults do
   @shortdoc "Configures generators and migration timestamps"
-  @moduledoc "Configures generators for `binary_id` and `utc_datetime_usec` timestamps."
+  @moduledoc "Defaults generators to `binary_id` primary keys and `utc_datetime_usec` timestamps, migrations included."
   use Igniter.Mix.Task
 
   alias Starter.Helpers

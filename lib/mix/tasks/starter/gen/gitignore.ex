@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Starter.Gen.Gitignore do
-  @shortdoc "Adds common entries to .gitignore"
+  @shortdoc "Adds macOS system files to .gitignore"
   @moduledoc "Adds macOS system files to `.gitignore`, creating the file if needed."
   use Igniter.Mix.Task
 

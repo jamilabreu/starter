@@ -6,10 +6,14 @@ defmodule Mix.Tasks.Starter.Add do
 
   ## Usage
 
-      mix starter.add oban
-      mix starter.add oban,credo
+      mix starter.add credo
+      mix starter.add credo,quokka
 
   Run `mix starter.add --list` to see every available step.
+
+  This task runs Starter's built-in steps only. For a package that ships its
+  own Igniter installer (`oban`, `ash`, …), use `mix igniter.install` — or
+  `{:add, :name}` in a starter, which resolves either way.
   """
 
   use Igniter.Mix.Task
@@ -27,7 +31,7 @@ defmodule Mix.Tasks.Starter.Add do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       group: :starter,
-      example: "mix starter.add oban",
+      example: "mix starter.add credo",
       positional: [{:names, optional: true}]
     }
   end

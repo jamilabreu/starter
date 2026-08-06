@@ -7,6 +7,7 @@ defmodule Mix.Tasks.Starter.Gen do
   ## Usage
 
       mix starter.gen gitignore
+      mix starter.gen gitignore,sort_deps
 
   Run `mix starter.gen --list` to see every available step.
   """

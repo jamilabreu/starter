@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Starter.New do
   step pack) to expand *its* steps into the generated file instead of the
   built-in catalog:
 
-      mix starter.new --from StarterJamil.Starter
+      mix starter.new --from MyTeam.Starter
 
   The generated file copies the shared starter's steps, so the app owns and
   can edit its setup while your pack remains the template.
@@ -85,7 +85,7 @@ defmodule Mix.Tasks.Starter.New do
   def info(_argv, _composing_task) do
     %Igniter.Mix.Task.Info{
       schema: [from: :string],
-      example: "mix starter.new --from StarterJamil.Starter"
+      example: "mix starter.new --from MyTeam.Starter"
     }
   end
 
@@ -156,8 +156,8 @@ defmodule Mix.Tasks.Starter.New do
             prints a plan showing which applied.
           * Compose any Igniter task: `{:task, "some.igniter.task"}`
           * Include a shared starter: `{:starter, SomeSharedStarter}`
-          * Write your own step — any module that `use Igniter.Mix.Task` — and
-            list it directly: `#{app_module}.Steps.MyCustomStep`
+          * Write your own step — any module that uses `Igniter.Mix.Task` —
+            and list it directly: `#{app_module}.Steps.MyCustomStep`
 
         Browse built-in steps with `mix starter.add --list`,
         `mix starter.remove --list`, and `mix starter.gen --list`.

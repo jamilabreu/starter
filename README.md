@@ -166,8 +166,8 @@ Starter plan
 Starter deliberately ships **no step for packages that provide their own
 Igniter installer** — `oban`, `tidewave`, `ash` and friends run upstream's
 installer, so upstream stays the authority. Built-in `add` steps exist only
-where upstream ships nothing, and each does the minimum wiring a missing
-installer would do. When a package later ships an installer, its step here
+where upstream ships nothing, and each does the minimum wiring the package's
+installer would do if it existed. When a package later ships an installer, its step here
 retires and starters naming it keep working unchanged — that's the point of
 the single verb.
 
@@ -182,7 +182,7 @@ Starter has a step of that name. You rarely want it.)
 | add | `exsync` | Auto-recompilation on file changes (dev) |
 | add | `libcluster` | Node clustering: dep, supervision child, Gossip topology in dev |
 | add | `mix_test_watch` | Runs tests on file changes |
-| add | `oban_pro` | Oban Pro: Smart engine, dynamic plugins, migration (requires license and an existing `oban` dep) |
+| add | `oban_pro` | Oban Pro: Smart engine, dynamic plugins, migration (requires a license and an existing Oban setup) |
 | add | `pgvector` | Vector search: dep, Postgrex types, config, extension migration (merges into existing extensions migration) |
 | add | `quokka` | Credo-configured formatter plugin |
 | add | `remixicons` | Remix Icons as a Tailwind plugin with `remix-*` classes and a CoreComponents `icon` clause |
