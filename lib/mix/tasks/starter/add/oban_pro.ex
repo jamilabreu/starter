@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
 
   @impl Igniter.Mix.Task
   def igniter(igniter) do
-    if Igniter.Project.Deps.has_dep?(igniter, :oban) do
+    if oban_configured?(igniter) do
       igniter
       |> add_dep()
       |> add_migration()
@@ -15,12 +15,23 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
       |> Igniter.Project.Formatter.import_dep(:oban_pro)
     else
       Igniter.add_warning(igniter, """
-      oban_pro requires oban, which is not a dependency yet. Install Oban \
-      first — {:install, :oban} in your workflow, or `mix igniter.install \
-      oban` — then re-run this step. In a workflow, queue it after the \
-      installs: {:queue, "starter.add", ["oban_pro"], if: :oban_pro}
+      oban_pro extends an Oban setup that isn't here yet: no `config :app, \
+      Oban` was found. Put {:add, :oban} before this step in your workflow \
+      so Oban's own installer runs first, or run `mix igniter.install oban` \
+      and re-run this step.
       """)
     end
+  end
+
+  # Deliberately checks for Oban's *config*, not its dependency. Packages a
+  # workflow installs are added to mix.exs before any step runs, so a dep
+  # check would pass while `oban.install` has yet to compose — it answers
+  # "will oban be a dep?" rather than "is Oban set up?". Its config is what
+  # oban.install writes, so this stays honest about ordering.
+  defp oban_configured?(igniter) do
+    app_name = Igniter.Project.Application.app_name(igniter)
+
+    Igniter.Project.Config.configures_key?(igniter, "config.exs", app_name, [Oban])
   end
 
   defp add_dep(igniter) do

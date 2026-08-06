@@ -66,7 +66,12 @@ jobs:
         run: |
           set -euo pipefail
           mix starter.new --yes
-          mix starter.run --yes 2>&1 | tee starter_run.log
+          # Flag-gated steps are off by default, so pass the ones CI can run —
+          # otherwise they are never exercised against real phx.new output.
+          # --oban-pro is absent on purpose: oban_pro is a licensed package
+          # from a private Hex repo, so its step stays covered by unit tests
+          # only.
+          mix starter.run --yes --exsync --mix-test-watch --gigalixir 2>&1 | tee starter_run.log
           mix deps.get
       - name: No steps silently no-oped
         working-directory: demo

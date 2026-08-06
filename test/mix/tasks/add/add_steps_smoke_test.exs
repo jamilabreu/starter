@@ -98,11 +98,20 @@ defmodule Mix.Tasks.Starter.Add.SmokeTest do
     refute diff(igniter) =~ ~r/\d+_add_extensions\.exs.*\d+_add_extensions\.exs/s
   end
 
-  test "oban_pro configures the Smart engine when oban is present" do
-    igniter =
-      phx_test_project()
-      |> Igniter.Project.Deps.add_dep({:oban, "~> 2.19"})
-      |> Igniter.compose_task(Mix.Tasks.Starter.Add.ObanPro)
+  # Stands in for what `oban.install` leaves behind.
+  defp project_with_oban_configured do
+    phx_test_project()
+    |> Igniter.Project.Deps.add_dep({:oban, "~> 2.19"})
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :test,
+      [Oban],
+      {:code, quote(do: [repo: Test.Repo])}
+    )
+  end
+
+  test "oban_pro configures the Smart engine when oban is set up" do
+    igniter = Igniter.compose_task(project_with_oban_configured(), Mix.Tasks.Starter.Add.ObanPro)
 
     mix_diff = diff(igniter, only: "mix.exs")
     assert mix_diff =~ ":oban_pro"
@@ -115,7 +124,20 @@ defmodule Mix.Tasks.Starter.Add.SmokeTest do
   test "oban_pro warns and skips when oban is missing" do
     igniter = Igniter.compose_task(phx_test_project(), Mix.Tasks.Starter.Add.ObanPro)
 
-    assert Enum.any?(igniter.warnings, &(&1 =~ "oban_pro requires oban"))
+    assert Enum.any?(igniter.warnings, &(&1 =~ "Oban setup that isn't here yet"))
+    refute diff(igniter, only: "mix.exs") =~ ":oban_pro"
+  end
+
+  # A workflow adds every package it installs to mix.exs before any step runs,
+  # so the dep alone says nothing about whether oban.install has composed yet.
+  # Guarding on the dep would let this through and clobber Oban's config.
+  test "oban_pro warns and skips when oban is a dep but not yet configured" do
+    igniter =
+      phx_test_project()
+      |> Igniter.Project.Deps.add_dep({:oban, "~> 2.19"})
+      |> Igniter.compose_task(Mix.Tasks.Starter.Add.ObanPro)
+
+    assert Enum.any?(igniter.warnings, &(&1 =~ "Oban setup that isn't here yet"))
     refute diff(igniter, only: "mix.exs") =~ ":oban_pro"
   end
 end

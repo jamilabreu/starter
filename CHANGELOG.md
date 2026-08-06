@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The `oban_pro` step guarded on the `oban` *dependency*, which 0.2.0 made
+  meaningless: a workflow adds every package it installs to `mix.exs` before
+  any step runs, so the check passed while `oban.install` had yet to compose.
+  `{:add, :oban_pro}` placed before `{:add, :oban}` would proceed as if Oban
+  were set up and write config for Oban's installer to clobber. It now checks
+  for Oban's config — what `oban.install` actually writes — so it stays
+  honest about ordering.
+
+- The `oban_pro` warning still told users to reach for `{:install, :oban}`
+  and `{:queue, "starter.add", ["oban_pro"]}`, the API 0.2.0 removed.
+
+### Changed
+
+- CI's golden test passes `--exsync --mix-test-watch --gigalixir`, so
+  flag-gated steps are exercised against real `phx.new` output instead of
+  never running. `--oban-pro` stays out: the package is licensed and lives in
+  a private Hex repo, so that step is covered by unit tests only.
+
+### Documentation
+
+- Packages from private Hex repos or organizations need qualified names
+  (`{:add, :"oban.oban_pro"}`). Bare names resolve against public Hex.
+
 ## [0.2.0] - 2026-08-05
 
 ### Changed

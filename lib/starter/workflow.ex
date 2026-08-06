@@ -19,6 +19,9 @@ defmodule Starter.Workflow do
     * `{:install, :ash}` — force the package's own installer, skipping any
       built-in step of the same name. Rarely needed; `{:add, :ash}` already
       resolves this way when Starter ships no step.
+    * `{:add, :"oban.oban_pro"}` — a package from a private Hex repo or
+      organization. Names resolve against public Hex unless qualified, so
+      `repo.package` (and `org/package`) must be spelled out.
     * `{:task, "some.igniter.task"}` — compose any Igniter-aware Mix task,
       with optional argv and an `if:` option as a fourth element; non-Igniter
       tasks are skipped with a warning
