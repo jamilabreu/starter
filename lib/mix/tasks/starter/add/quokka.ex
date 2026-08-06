@@ -3,6 +3,8 @@ defmodule Mix.Tasks.Starter.Add.Quokka do
   @moduledoc "Adds `quokka`, a formatter plugin that rewrites code to match your Credo configuration."
   use Igniter.Mix.Task
 
+  alias Sourceror.Zipper
+
   @impl Igniter.Mix.Task
   def igniter(igniter) do
     {package, version} = Starter.Versions.latest_hex_dep(:quokka)
@@ -26,8 +28,43 @@ defmodule Mix.Tasks.Starter.Add.Quokka do
         yes: "--yes" in argv(igniter),
         yes_to_deps: "--yes-to-deps" in argv(igniter)
       )
-      |> Igniter.Project.Formatter.add_formatter_plugin(Quokka)
+      |> append_formatter_plugin(Quokka)
     end
+  end
+
+  # Igniter's add_formatter_plugin/2 prepends, which would put Quokka ahead of
+  # Phoenix.LiveView.HTMLFormatter. Plugins run in order, and HTMLFormatter is
+  # what phx.new puts there, so append instead of displacing it.
+  defp append_formatter_plugin(igniter, plugin) do
+    Igniter.update_elixir_file(igniter, ".formatter.exs", fn zipper ->
+      zipper
+      |> Zipper.down()
+      |> case do
+        nil ->
+          {:ok, Igniter.Code.Common.add_code(zipper, quote(do: [plugins: [unquote(plugin)]]))}
+
+        zipper ->
+          zipper
+          |> Zipper.rightmost()
+          |> Igniter.Code.Keyword.put_in_keyword([:plugins], [plugin], fn nested ->
+            Igniter.Code.List.append_new_to_list(nested, plugin)
+          end)
+          |> case do
+            {:ok, zipper} ->
+              {:ok, zipper}
+
+            _other ->
+              {:warning,
+               """
+               Could not add #{inspect(plugin)} to `plugins` in `.formatter.exs`.
+
+               Please add it manually, i.e
+
+                   plugins: [Phoenix.LiveView.HTMLFormatter, #{inspect(plugin)}]
+               """}
+          end
+      end
+    end)
   end
 
   defp argv(igniter) do

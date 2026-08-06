@@ -41,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `quokka` step adds `Quokka` to the `plugins` list in `.formatter.exs`
   itself instead of printing a notice telling you to. This needs the dep
   fetched before the plugin is named — `mix format` aborts on a plugin it
-  cannot load — so the step now fetches as part of its work.
+  cannot load — so the step now fetches as part of its work. It is appended
+  rather than prepended, leaving `Phoenix.LiveView.HTMLFormatter` first.
 
 - CI's golden test passes `--exsync --mix-test-watch --gigalixir`, so
   flag-gated steps are exercised against real `phx.new` output instead of
