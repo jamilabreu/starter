@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Migration versions could collide, leaving the app unmigratable.** Running
+  with `--oban-pro` failed with `Ecto.MigrationError: migration version ... is
+  duplicated`. Starter tracked its own migration timestamps but had no way to
+  see one a package's installer created — fine in 0.1.x, where installers ran
+  in a separate subprocess seconds later, but installers now compose into the
+  same run and can land in the same second. Timestamps are now advanced past
+  every migration actually present, whoever wrote it.
+
+- **The Tailwind class formatter never ran.** It guarded on
+  `Code.ensure_loaded?(MyAppWeb.Formatters.ClassFormatter)`, but
+  `.formatter.exs` is read before the project's code paths are set up, so that
+  is `false` even after `mix compile` — `attribute_formatters` was always
+  `%{}`. The generated file now requires the formatter source directly, which
+  both fixes the sorting and makes formatting identical whether or not the app
+  is built.
+
 - The `oban_pro` step guarded on the `oban` *dependency*, which 0.2.0 made
   meaningless: a workflow adds every package it installs to `mix.exs` before
   any step runs, so the check passed while `oban.install` had yet to compose.
@@ -21,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `{:queue, "starter.add", ["oban_pro"]}`, the API 0.2.0 removed.
 
 ### Changed
+
+- The `quokka` step adds `Quokka` to the `plugins` list in `.formatter.exs`
+  itself instead of printing a notice telling you to. This needs the dep
+  fetched before the plugin is named — `mix format` aborts on a plugin it
+  cannot load — so the step now fetches as part of its work.
 
 - CI's golden test passes `--exsync --mix-test-watch --gigalixir`, so
   flag-gated steps are exercised against real `phx.new` output instead of

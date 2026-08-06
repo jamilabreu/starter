@@ -17,11 +17,14 @@ defmodule Mix.Tasks.Starter.Add.SmokeTest do
     assert Enum.any?(igniter.notices, &(&1 =~ "test.watch"))
   end
 
-  test "quokka adds a dev/test dep and a notice" do
+  # The formatter plugin is wired up for real now rather than left to a
+  # notice, but that needs the dep fetched first, which cannot happen under
+  # Igniter.Test — so only the dep is observable here.
+  test "quokka adds a dev/test dep" do
     igniter = Igniter.compose_task(test_project(), Mix.Tasks.Starter.Add.Quokka)
 
     assert diff(igniter, only: "mix.exs") =~ ":quokka"
-    assert Enum.any?(igniter.notices, &(&1 =~ "Quokka"))
+    refute Enum.any?(igniter.notices, &(&1 =~ "Add `Quokka`"))
   end
 
   test "dotenv_parser adds dep, .env, runtime config, and gitignore entry" do
