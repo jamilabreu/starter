@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jamilabreu/starter/main/starter-logo.png" alt="A phoenix launching upward, trailing speed streaks" width="380">
+</p>
+
 # Starter
 
 [![CI](https://github.com/jamilabreu/starter/actions/workflows/ci.yml/badge.svg)](https://github.com/jamilabreu/starter/actions/workflows/ci.yml)
