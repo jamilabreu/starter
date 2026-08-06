@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-06
+
+Documentation fixes only — no behavior changes.
+
+### Documentation
+
+- `mix starter.add`'s own docs used `mix starter.add oban` as their example
+  — the exact command 0.2.0's changelog called out as never working (`oban`
+  has no built-in step). The examples now use built-in steps, and the
+  moduledoc carries the README's note that the CLI runs Starter's own steps
+  only.
+- The `Starter` moduledoc still taught two retired patterns: the example
+  starter composed `{:task, "igniter.install", ["ash"]}` where `{:add, :ash}`
+  is the 0.2.0 story, and the `:queue` step form was illustrated with
+  `{:queue, "starter.add", ["oban_pro"]}` — the pattern 0.2.1 scrubbed from
+  the oban_pro warning.
+- The README said `oban_pro` requires an existing `oban` dep; since 0.2.1
+  the step checks for an existing Oban setup (its config), not the dep.
+- `Starter.Versions` claimed lookups from Hex and npm; GitHub and the Oban
+  Pro docs site were missing from the list.
+- Consistency and wording: `mix starter.new --from` examples use
+  `MyTeam.Starter` throughout, sharper shortdocs for the `gitignore` and
+  `mix_env_config` steps, an untangled `generator_defaults` moduledoc, and
+  small README and generated-starter wording fixes.
+
 ## [0.3.0] - 2026-08-06
 
 ### Changed
