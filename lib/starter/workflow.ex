@@ -9,35 +9,47 @@ defmodule Starter.Workflow do
 
   ## Step forms
 
-    * `{:add, :oban}` — run the built-in add step `oban`
+    * `{:add, :credo}` — get a package into the app: Starter's own step when
+      it has one, otherwise the package is installed and its own installer
+      runs. Which of the two applies is upstream's business, not something a
+      workflow file should encode.
     * `{:remove, :topbar}` — run the built-in remove step `topbar`
     * `{:gen, :gitignore}` — run the built-in gen step `gitignore`
     * `{:add, :oban, if: :oban}` — only when the `--oban` flag is passed
-    * `{:install, :ash}` — fetch a package via `mix igniter.install` and run
-      the package's own installer when it ships one. Queued to run right
-      after the workflow's other changes apply.
-    * `{:queue, "starter.add", ["oban_pro"]}` — queue any Mix task to run
-      after the workflow's changes apply; queued tasks run in order, so this
-      is how to sequence work after `{:install, ...}` steps
-
-  Queued tasks (including `{:install, ...}`) run non-interactively with
-  `--yes` appended — their subprocesses have no stdin, so a prompt there
-  could never be answered. Confirming the workflow's diff is the approval
-  for everything it queues; queued tasks must tolerate the `--yes` flag
-  (every Igniter task does).
-
-  ## Ordering
-
-  In-run steps apply first, in list order. Queued steps then run in list
-  order against the applied project. To guarantee a step runs last — after
-  the installers have added their deps — express it as a queued task and
-  place it at the end of the list, e.g. `{:queue, "starter.gen.sort_deps"}`.
+    * `{:install, :ash}` — force the package's own installer, skipping any
+      built-in step of the same name. Rarely needed; `{:add, :ash}` already
+      resolves this way when Starter ships no step.
     * `{:task, "some.igniter.task"}` — compose any Igniter-aware Mix task,
       with optional argv and an `if:` option as a fourth element; non-Igniter
       tasks are skipped with a warning
+    * `{:queue, "starter.add", ["oban_pro"]}` — queue any Mix task to run
+      after the workflow's changes apply; use this only for work that must
+      see the applied project on disk
     * `{:workflow, OtherWorkflow}` — include another workflow's steps
     * `MyApp.Steps.Custom` — any module implementing `Igniter.Mix.Task`,
       optionally as `{MyApp.Steps.Custom, if: :flag}`
+
+  Queued tasks run non-interactively with `--yes` appended — their
+  subprocesses have no stdin, so a prompt there could never be answered.
+  Confirming the workflow's diff is the approval for everything it queues;
+  queued tasks must tolerate the `--yes` flag (every Igniter task does).
+
+  ## Ordering
+
+  Steps apply in list order, installers included, and every change lands in
+  one diff you confirm once. A step placed after one that installs a package
+  sees its effects, so ordering is just list position — e.g.
+  `{:gen, :sort_deps}` at the end sorts the deps the installers added.
+
+  The one exception is dependencies. Packages that resolve to an install are
+  added to `mix.exs` and fetched *before* any step runs, because their
+  installers have to be on disk to compose. That dependency change is
+  written and confirmed on its own, ahead of the run's main diff.
+
+  Queued steps still run last, in list order, after everything applies.
+
+  Each run prints a plan showing what every step resolved to — a built-in
+  step, a package's installer, a plain dependency, or queued work.
 
   ## Example
 

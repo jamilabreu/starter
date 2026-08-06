@@ -63,34 +63,44 @@ defmodule Mix.Tasks.Starter.NewTest do
     assert content =~ "# #{Mix.Task.shortdoc(Mix.Tasks.Starter.Gen.BaseSchema)}\n"
   end
 
-  test "packages with their own installers use {:install, ...}" do
+  # Packages with their own installers are written as {:add, ...} like any
+  # other, and say so in the generated comment — whether a package has an
+  # installer is not something the workflow file should encode.
+  test "packages with their own installers are ordinary {:add, ...} steps" do
     content = generated_workflow()
 
-    assert content =~ "{:install, :oban}"
-    assert content =~ "{:install, :oban_web}"
-    assert content =~ "{:install, :tidewave}"
-    refute content =~ "{:add, :oban}"
-    refute content =~ "{:add, :tidewave}"
+    assert content =~ "{:add, :oban}"
+    assert content =~ "{:add, :oban_web}"
+    assert content =~ "{:add, :tidewave}"
+    assert content =~ "Installs oban and runs the package's own igniter installer"
+    refute content =~ "{:install,"
   end
 
   test "optional steps document their flag" do
     content = generated_workflow()
 
     assert content =~ "(only with --oban-pro)"
-    assert content =~ ~s({:queue, "starter.add", ["oban_pro"], if: :oban_pro})
+    assert content =~ "{:add, :oban_pro, if: :oban_pro}"
     assert content =~ "(only with --gigalixir)"
   end
 
-  test "sort_deps is queued after the installs so it runs last" do
+  test "oban_pro follows oban, whose installer it patches" do
     content = generated_workflow()
 
-    assert content =~ ~s({:queue, "starter.gen.sort_deps")
+    {oban_pos, _} = :binary.match(content, "{:add, :oban}")
+    {pro_pos, _} = :binary.match(content, "{:add, :oban_pro")
+    assert oban_pos < pro_pos
+  end
 
-    {sort_pos, _} = :binary.match(content, ~s({:queue, "starter.gen.sort_deps"))
-    {install_pos, _} = :binary.match(content, "{:install, :oban}")
-    assert install_pos < sort_pos
+  test "sort_deps runs in-run and last, so it sorts installer-added deps" do
+    content = generated_workflow()
 
-    refute content =~ "{:gen, :sort_deps}"
+    assert content =~ "{:gen, :sort_deps}"
+    refute content =~ ~s({:queue, "starter.gen.sort_deps")
+
+    {sort_pos, _} = :binary.match(content, "{:gen, :sort_deps}")
+    {oban_pos, _} = :binary.match(content, "{:add, :oban}")
+    assert oban_pos < sort_pos
   end
 
   describe "--from" do
@@ -136,7 +146,9 @@ defmodule Mix.Tasks.Starter.NewTest do
   test "the generated workflow references only resolvable steps" do
     content = generated_workflow()
 
-    Regex.scan(~r/\{:(add|remove|gen), :(\w+)/, content)
+    # {:add, ...} is exempt: a name with no built-in step is installed as a
+    # package, which is how oban and friends appear here.
+    Regex.scan(~r/\{:(remove|gen), :(\w+)/, content)
     |> Enum.each(fn [_, kind, name] ->
       kind = String.to_existing_atom(kind)
 

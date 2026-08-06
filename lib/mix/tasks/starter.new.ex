@@ -60,14 +60,13 @@ defmodule Mix.Tasks.Starter.New do
        {:add, :quokka},
        {:add, :remixicons},
        {:add, :uuidv7},
-       {:add, :mix_test_watch, if: :mix_test_watch}
-     ]},
-    {"Install packages via their own igniter installers (run after the steps above apply)",
-     [
-       {:install, :oban},
-       {:install, :oban_web},
-       {:install, :tidewave},
-       {:queue, "starter.add", ["oban_pro"], if: :oban_pro}
+       {:add, :mix_test_watch, if: :mix_test_watch},
+       # No built-in step: these ship their own installers, which run here.
+       {:add, :oban},
+       {:add, :oban_web},
+       {:add, :tidewave},
+       # Patches what oban's installer wrote, so it follows it in the list.
+       {:add, :oban_pro, if: :oban_pro}
      ]},
     {"Deployment",
      [
@@ -77,8 +76,8 @@ defmodule Mix.Tasks.Starter.New do
     {"Tidy mix.exs",
      [
        {:gen, :ecto_force_drop},
-       # Queued last so it also sorts the deps the installers above add
-       {:queue, "starter.gen.sort_deps"}
+       # Last, so it also sorts the deps the steps above added
+       {:gen, :sort_deps}
      ]}
   ]
 
@@ -152,7 +151,9 @@ defmodule Mix.Tasks.Starter.New do
           * Steps tagged `if: :flag` only run when you pass the matching
             `--flag`. Tag any step to make it optional — flags are derived
             automatically.
-          * Install any package via its own Igniter installer: `{:install, :ash}`
+          * `{:add, :name}` gets a package into the app: a built-in step when
+            Starter ships one, otherwise the package's own installer. Each run
+            prints a plan showing which applied.
           * Compose any Igniter task: `{:task, "some.igniter.task"}`
           * Include a shared workflow: `{:workflow, SomeSharedWorkflow}`
           * Write your own step — any module that `use Igniter.Mix.Task` — and
@@ -226,11 +227,19 @@ defmodule Mix.Tasks.Starter.New do
     "      # #{comment}\n      #{code}"
   end
 
-  defp describe({kind, name}) when kind in [:add, :remove, :gen] do
+  defp describe({:add, name}) do
+    {"{:add, :#{name}}", add_doc(name)}
+  end
+
+  defp describe({:add, name, [if: flag]}) do
+    {"{:add, :#{name}, if: :#{flag}}", "#{add_doc(name)} #{flag_note(flag)}"}
+  end
+
+  defp describe({kind, name}) when kind in [:remove, :gen] do
     {"{:#{kind}, :#{name}}", shortdoc(kind, name)}
   end
 
-  defp describe({kind, name, [if: flag]}) when kind in [:add, :remove, :gen] do
+  defp describe({kind, name, [if: flag]}) when kind in [:remove, :gen] do
     {"{:#{kind}, :#{name}, if: :#{flag}}", "#{shortdoc(kind, name)} #{flag_note(flag)}"}
   end
 
@@ -247,12 +256,12 @@ defmodule Mix.Tasks.Starter.New do
 
   defp describe({:queue, task, argv}) do
     {"{:queue, #{inspect(task)}, #{inspect(argv)}}",
-     "Queues `mix #{Enum.join([task | argv], " ")}` after the installs"}
+     "Queues `mix #{Enum.join([task | argv], " ")}` to run after this run applies"}
   end
 
   defp describe({:queue, task, argv, [if: flag]}) do
     {"{:queue, #{inspect(task)}, #{inspect(argv)}, if: :#{flag}}",
-     "Queues `mix #{Enum.join([task | argv], " ")}` after the installs #{flag_note(flag)}"}
+     "Queues `mix #{Enum.join([task | argv], " ")}` to run after this run applies #{flag_note(flag)}"}
   end
 
   defp describe({:task, task}), do: describe({:task, task, []})
@@ -288,6 +297,15 @@ defmodule Mix.Tasks.Starter.New do
       Mix.Task.shortdoc(module) || "Custom step"
     else
       "Custom step"
+    end
+  end
+
+  # `{:add, name}` has no built-in step when the package ships its own
+  # installer, which is the normal case rather than an error.
+  defp add_doc(name) do
+    case Starter.Steps.resolve(:add, name) do
+      {:ok, module} -> Mix.Task.shortdoc(module) || to_string(name)
+      :error -> "Installs #{name} and runs the package's own igniter installer"
     end
   end
 

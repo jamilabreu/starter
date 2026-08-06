@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-05
+
+### Changed
+
+- **`{:add, name}` is now the single verb for getting a package into an
+  app.** It runs Starter's built-in step when one exists, and otherwise
+  installs the package and runs the package's own Igniter installer.
+  Whether a package ships an installer is upstream's business and changes
+  over time, so it is no longer something a workflow file has to encode —
+  when a package gains an installer, its built-in step retires and
+  workflows naming it keep working unchanged.
+
+  `{:install, name}` still works, and now means "use upstream's installer
+  even if Starter has a step of that name". It is rarely needed.
+
+- **Package installers are composed into the workflow run** rather than
+  queued into a subprocess. Everything a run does — Starter's steps and the
+  packages' own installers — lands in one diff you confirm once. Installers
+  no longer run after your confirmation via `mix igniter.install`.
+
+  Dependencies are the exception: packages that resolve to an install are
+  added to `mix.exs` and fetched before any step runs, because their
+  installers have to be on disk to compose at all. That dependency change
+  is shown and confirmed on its own, ahead of the run's main diff.
+
+- **Steps apply in list order, installers included.** A step placed after
+  one that installs a package sees its effects, so `{:queue, ...}` is no
+  longer needed to sequence work around installs — it remains for work that
+  genuinely has to run against the applied project on disk.
+
+- The generated workflow follows suit: `oban_pro` and `sort_deps` are
+  ordinary in-run steps again, `oban_pro` placed after `oban` whose
+  installer output it patches, and `sort_deps` last so it sorts the
+  dependencies the installers added. This supersedes the 0.1.2 change that
+  queued `sort_deps`.
+
+### Added
+
+- Every run prints a plan showing what each step resolved to — a built-in
+  step, a package's installer, a plain dependency, or queued work. This is
+  where the built-in-vs-installer distinction is now visible, since the step
+  list no longer draws it.
+
+- `Starter.Runner.installs/2`, returning the packages a run would install
+  with optional steps resolved against the given flags.
+
+- `{:add, name}` raises with a suggestion when `name` closely resembles a
+  built-in step, so a typo is reported as a typo instead of becoming a
+  doomed Hex lookup.
+
+### Fixed
+
+- The README documented `mix starter.add oban,credo`, which never worked —
+  `oban` has no built-in add step, so the command errored. The `starter.add`
+  CLI runs Starter's own steps only; use `mix igniter.install` for packages
+  that ship installers.
+
 ## [0.1.2] - 2026-08-04
 
 ### Fixed

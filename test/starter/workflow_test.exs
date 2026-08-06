@@ -29,7 +29,25 @@ defmodule Starter.WorkflowTest do
 
     @impl Starter.Workflow
     def steps do
-      [{:add, :does_not_exist}]
+      [{:remove, :does_not_exist}]
+    end
+  end
+
+  defmodule TypoWorkflow do
+    use Starter.Workflow
+
+    @impl Starter.Workflow
+    def steps do
+      [{:add, :credoo}]
+    end
+  end
+
+  defmodule UnknownAddWorkflow do
+    use Starter.Workflow
+
+    @impl Starter.Workflow
+    def steps do
+      [{:add, :some_unrelated_package}]
     end
   end
 
@@ -64,10 +82,23 @@ defmodule Starter.WorkflowTest do
       assert Igniter.Test.diff(igniter, only: "mix.exs") =~ ":credo"
     end
 
-    test "unknown steps raise with the available step names" do
-      assert_raise Mix.Error, ~r/Unknown add step: :does_not_exist/, fn ->
+    test "unknown remove steps raise with the available step names" do
+      assert_raise Mix.Error, ~r/Unknown remove step: :does_not_exist/, fn ->
         Starter.Runner.run(test_project(), BrokenWorkflow, [])
       end
+    end
+
+    # `{:add, name}` falls through to installing `name` as a package, so an
+    # unrecognized name is not an error on its own — but a near-miss of a
+    # built-in step is a typo, not a package anyone meant to install.
+    test "add steps that look like a mistyped built-in step raise a suggestion" do
+      assert_raise Mix.Error, ~r/Did you mean: credo\?/, fn ->
+        Starter.Runner.run(test_project(), TypoWorkflow, [])
+      end
+    end
+
+    test "add steps with no built-in match resolve to an install" do
+      assert Starter.Runner.installs(UnknownAddWorkflow) == [:some_unrelated_package]
     end
   end
 

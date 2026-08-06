@@ -26,9 +26,9 @@ defmodule Mix.Tasks.MyApp.Workflow do
       {:remove, :daisy_ui},                  # undo a phx.new default
       {:remove, :topbar},
       {:gen, :gitignore},                    # generate project hygiene
-      {:add, :credo},                        # install + configure packages
+      {:add, :credo},                        # get a package into the app
+      {:add, :ash},                          # same verb, runs ash's installer
       {:add, :oban, if: :oban},              # optional, behind --oban
-      {:install, :ash},                      # any package's own installer
       MyApp.Steps.DeployConfig               # or your own step module
     ]
   end
@@ -89,12 +89,16 @@ what it does. Open it and make it yours:
 mix starter.run
 ```
 
-Nothing is applied blindly: every change is shown as a diff, and you confirm
-before anything touches disk. (`mix starter.run` finds and runs your workflow
-task — invoking it directly as `mix my_app.workflow` does the same thing.)
-After your confirmation, any `{:install, ...}` steps run their packages'
-own installers automatically — your confirmation of the workflow covers
-them. When everything finishes, set up the database and go:
+Nothing is applied blindly. The run prints a plan showing what every step
+resolved to, then shows all its changes — your steps and any package
+installers together — as one diff you confirm once. (`mix starter.run` finds
+and runs your workflow task; invoking it directly as `mix my_app.workflow`
+does the same thing.)
+
+The one thing that happens before that confirmation is dependencies: packages
+that ship an installer are added to `mix.exs` and fetched first, because their
+installers have to be on disk to run at all. That dependency change is shown
+and confirmed on its own. When everything finishes, set up the database and go:
 
 ```bash
 mix ecto.setup
@@ -114,11 +118,14 @@ up, and it's the file you'll copy into your next project.
 Every step also works on its own, no workflow required:
 
 ```bash
-mix starter.add oban,credo      # install + configure packages
+mix starter.add credo,quokka    # install + configure packages
 mix starter.remove daisy_ui     # undo a phx.new default
 mix starter.gen gitignore       # generate config/code
 mix starter.add --list          # see what's available (also: remove, gen)
 ```
+
+These run Starter's own steps only. For a package that ships its own
+installer, use Igniter directly: `mix igniter.install oban`.
 
 ### Scripts and CI
 
@@ -132,22 +139,40 @@ mix starter.new --yes && mix starter.run --yes
 ## Why not just…
 
 - **`mix igniter.new --install a,b,c`?** Great for installing packages that
-  ship installers. Starter is for everything around that: *removing*
-  `phx.new` defaults (nothing else does this), installing packages that
-  don't ship installers, ordering steps, optional flags, and keeping the
-  whole ritual versioned in your repo.
+  ship installers, and Starter runs those same installers rather than
+  competing with them. Starter is for everything around that: *removing*
+  `phx.new` defaults (nothing else does this), packages that don't ship
+  installers, ordering steps, optional flags, and keeping the whole ritual
+  versioned in your repo.
 - **A boilerplate/template repo?** Templates fork away from `phx.new` and
   rot. A workflow replays your preferences on top of whatever `phx.new`
   currently generates.
 
 ## Built-in steps
 
+`{:add, :name}` means "get this package into my app, correctly." Starter's own
+step runs when it has one; otherwise the package is installed and its own
+installer runs. Which of the two applies is upstream's business, and each run
+prints a plan telling you which it was:
+
+```console
+Starter plan
+  starter.add.credo
+  oban — oban.install
+  nimble_options — dependency only, ships no installer
+  starter.gen.sort_deps
+```
+
 Starter deliberately ships **no step for packages that provide their own
-Igniter installer** — `oban`, `oban_web`, `tidewave`, `ash`, and friends are
-used via `{:install, :package}`, which runs the package's own installer so
-upstream stays the authority. Built-in `add` steps exist only where upstream
-ships no installer, and each does the minimum wiring a missing installer
-would do. If a package later ships an installer, its step here retires.
+Igniter installer** — `oban`, `tidewave`, `ash` and friends run upstream's
+installer, so upstream stays the authority. Built-in `add` steps exist only
+where upstream ships nothing, and each does the minimum wiring a missing
+installer would do. When a package later ships an installer, its step here
+retires and workflows naming it keep working unchanged — that's the point of
+the single verb.
+
+(`{:install, :name}` still exists, and forces upstream's installer even when
+Starter has a step of that name. You rarely want it.)
 
 | Kind | Step | What it does |
 |---|---|---|
@@ -225,13 +250,16 @@ def steps do
 end
 ```
 
-Steps that patch the output of `{:install, ...}` steps (which apply after
-the in-run steps) should be Mix tasks queued after them:
+Steps apply in list order, package installers included, so a step that patches
+what an installer wrote just goes after it:
 
 ```elixir
-{:install, :oban},
-{:queue, "my_team.oban_tweaks"}
+{:add, :oban},
+MyTeam.Steps.ObanTweaks
 ```
+
+`{:queue, "some.task"}` is still there for work that genuinely has to run
+against the applied project on disk, after everything else.
 
 ## Compatibility
 

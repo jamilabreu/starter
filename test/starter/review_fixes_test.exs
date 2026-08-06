@@ -100,39 +100,29 @@ defmodule Starter.ReviewFixesTest do
       assert Enum.any?(igniter.warnings, &(&1 =~ "not an Igniter task"))
     end
 
-    test "{:install, pkg} queues igniter.install and honors flags" do
+    test "{:install, pkg} resolves in-run rather than queueing a subprocess" do
       igniter = Starter.Runner.run(test_project(), InstallWorkflow, [])
 
-      assert Enum.any?(igniter.tasks, fn {task, argv} ->
-               task == "igniter.install" and "ash" in argv
-             end)
-
-      # Queued subprocesses have no stdin; --yes is always appended so
-      # prompting installers cannot stall the run.
-      assert Enum.all?(igniter.tasks, fn {_task, argv} -> "--yes" in argv end)
-
-      refute Enum.any?(igniter.tasks, fn {_task, argv} -> "oban_pro" in argv end)
-
-      with_flag = Starter.Runner.run(test_project(), InstallWorkflow, oban_pro: true)
-
-      assert Enum.any?(with_flag.tasks, fn {task, argv} ->
-               task == "igniter.install" and "oban_pro" in argv
-             end)
+      # Installs are composed into this run, so nothing is handed to a
+      # subprocess — the old `igniter.install` queueing is gone.
+      refute Enum.any?(igniter.tasks, fn {task, _argv} -> task == "igniter.install" end)
     end
 
-    test "{:queue, ...} sequences a task after installs, honoring flags" do
+    test "{:install, pkg} honors flags when resolving packages" do
+      assert Starter.Runner.installs(InstallWorkflow) == [:ash]
+      assert Starter.Runner.installs(InstallWorkflow, oban_pro: true) == [:ash, :oban_pro]
+    end
+
+    test "{:queue, ...} still queues, honoring flags" do
       igniter = Starter.Runner.run(test_project(), QueueWorkflow, oban_pro: true)
 
       tasks = Enum.map(igniter.tasks, fn {task, _argv} -> task end)
-      assert tasks == ["igniter.install", "starter.add"]
+      assert tasks == ["starter.add"]
 
       # Exactly the task args plus --yes: the workflow's own flags must not
       # leak into subprocess argv (strict option parsers reject them).
       assert {_, ["oban_pro", "--yes"]} =
                Enum.find(igniter.tasks, fn {task, _} -> task == "starter.add" end)
-
-      assert {_, ["oban", "--yes"]} =
-               Enum.find(igniter.tasks, fn {task, _} -> task == "igniter.install" end)
 
       without_flag = Starter.Runner.run(test_project(), QueueWorkflow, [])
       refute Enum.any?(without_flag.tasks, fn {task, _} -> task == "starter.add" end)

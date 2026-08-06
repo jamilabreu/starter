@@ -17,6 +17,7 @@ defmodule Starter.Runner do
   # workflow is the approval for what it queues). Nothing else is forwarded:
   # the workflow's custom flags have already done their job selecting steps,
   # and leaking them crashes queued tasks with strict option parsers.
+  # Installs no longer go through here — see prepare_installs/2.
   @queued_flags ["--yes"]
 
   @doc """
@@ -28,8 +29,116 @@ defmodule Starter.Runner do
   """
   @spec run(Igniter.t(), module(), keyword()) :: Igniter.t()
   def run(igniter, workflow, opts \\ []) when is_atom(workflow) do
-    igniter = check_phoenix_version(igniter)
-    Enum.reduce(workflow.steps(), igniter, &apply_step(&2, &1, opts))
+    steps = expand_all(workflow, opts)
+
+    igniter
+    |> check_phoenix_version()
+    |> prepare_installs(steps)
+    |> show_plan(steps)
+    |> then(&Enum.reduce(steps, &1, fn step, igniter -> apply_step(igniter, step) end))
+  end
+
+  # Printed after the dependency fetch, because which packages ship an
+  # installer is only knowable once they are on disk. This is where a reader
+  # sees what each step resolved to and what defers — the step list itself no
+  # longer distinguishes them.
+  defp show_plan(igniter, steps) do
+    if igniter.assigns[:test_mode?] do
+      igniter
+    else
+      Mix.shell().info(["\n", IO.ANSI.bright(), "Starter plan", IO.ANSI.reset()])
+      Enum.each(steps, &Mix.shell().info("  #{describe(&1)}"))
+      Mix.shell().info("")
+      igniter
+    end
+  end
+
+  defp describe({:module, module}), do: label(module)
+  defp describe({:task, task, _argv}), do: task
+
+  defp describe({:install, package}) do
+    case Mix.Task.get("#{package}.install") do
+      nil -> "#{package} — dependency only, ships no installer"
+      _ -> "#{package} — #{package}.install"
+    end
+  end
+
+  defp describe({:queue, task, _argv}), do: "#{task} — queued, runs after this run applies"
+
+  defp label(module) do
+    case Module.split(module) do
+      ["Mix", "Tasks" | _] -> Mix.Task.task_name(module)
+      _ -> inspect(module)
+    end
+  end
+
+  @doc """
+  Returns the packages a run of `workflow` would install, in step order,
+  with optional steps resolved against `opts`.
+
+  These are added to `mix.exs` and fetched before any step runs, so this is
+  the set whose dependency changes reach disk ahead of the run's diff.
+  """
+  @spec installs(module(), keyword()) :: [atom()]
+  def installs(workflow, opts \\ []) when is_atom(workflow) do
+    for {:install, package} <- expand_all(workflow, opts), do: package
+  end
+
+  # Flattens nested workflows and drops skipped steps, so the whole run is a
+  # single ordered list. Installs need to be known up front (see
+  # prepare_installs/2), which means resolving nesting before applying
+  # anything.
+  defp expand_all(workflow, opts) do
+    workflow.steps()
+    |> Enum.map(&expand(&1, opts))
+    |> Enum.flat_map(fn
+      :skip -> []
+      {:workflow, module} -> expand_all(module, opts)
+      step -> [step]
+    end)
+  end
+
+  # Adds every {:install, ...} package to mix.exs and fetches once, before any
+  # step runs. Igniter writes only the deps change to disk here, leaving the
+  # rest of the run's diff pending — which is what lets the installers compose
+  # into this run instead of being queued into a subprocess.
+  defp prepare_installs(igniter, steps) do
+    case for {:install, package} <- steps, do: package, uniq: true do
+      [] ->
+        igniter
+
+      packages ->
+        # Resolving versions queries Hex and apply_and_fetch_dependencies/2
+        # raises in test mode, so installs are inert under Igniter.Test: no
+        # installer resolves and each step no-ops.
+        if igniter.assigns[:test_mode?] do
+          igniter
+        else
+          packages
+          |> Enum.reduce(igniter, &add_install_dep(&2, &1))
+          |> Igniter.apply_and_fetch_dependencies(
+            operation: "compiling #{Enum.join(packages, ", ")}",
+            yes: "--yes" in argv(igniter),
+            yes_to_deps: "--yes-to-deps" in argv(igniter)
+          )
+        end
+    end
+  end
+
+  defp add_install_dep(igniter, package) do
+    dep =
+      package
+      |> to_string()
+      |> Igniter.Project.Deps.determine_dep_type_and_version!(argv: argv(igniter))
+
+    Igniter.Project.Deps.add_dep(igniter, dep)
+  end
+
+  defp argv(igniter) do
+    case igniter.args do
+      %{argv: argv} when is_list(argv) -> argv
+      _ -> []
+    end
   end
 
   defp check_phoenix_version(igniter) do
@@ -61,45 +170,43 @@ defmodule Starter.Runner do
     end
   end
 
-  defp apply_step(igniter, step, opts) do
-    case expand(step, opts) do
-      :skip ->
-        igniter
+  defp apply_step(igniter, {:module, module}), do: Igniter.compose_task(igniter, module)
 
-      {:module, module} ->
-        Igniter.compose_task(igniter, module)
+  defp apply_step(igniter, {:task, task, argv}) do
+    Igniter.compose_task(igniter, task, argv, fn igniter ->
+      Igniter.add_warning(igniter, """
+      Step {:task, #{inspect(task)}} was skipped: `mix #{task}` is not an \
+      Igniter task, so it cannot be composed into a workflow. Run it \
+      directly instead: mix #{task} #{Enum.join(argv, " ")}
+      """)
+    end)
+  end
 
-      {:task, task, argv} ->
-        Igniter.compose_task(igniter, task, argv, fn igniter ->
-          Igniter.add_warning(igniter, """
-          Step {:task, #{inspect(task)}} was skipped: `mix #{task}` is not an \
-          Igniter task, so it cannot be composed into a workflow. Run it \
-          directly instead: mix #{task} #{Enum.join(argv, " ")}
-          """)
-        end)
-
-      {:install, package} ->
-        # igniter.install fetches the package and runs its own installer task
-        # (e.g. oban.install) when it ships one, falling back to a plain dep
-        # add. It cannot be composed mid-run, so it is queued to run right
-        # after the workflow's changes apply.
-        Igniter.add_task(igniter, "igniter.install", [to_string(package) | @queued_flags])
-
-      {:queue, task, argv} ->
-        # Queued tasks run in order after the workflow's changes apply —
-        # the way to sequence work after {:install, ...} steps.
-        Igniter.add_task(igniter, task, argv ++ @queued_flags)
-
-      {:workflow, module} ->
-        run(igniter, module, opts)
+  # The dep is already added and fetched by prepare_installs/2, so all that is
+  # left is the package's own installer, if it ships one. Composing it here
+  # puts its changes in this run's diff, at this position in the step list.
+  defp apply_step(igniter, {:install, package}) do
+    case Mix.Task.get("#{package}.install") do
+      nil -> igniter
+      task -> Igniter.compose_task(igniter, task, [])
     end
   end
 
-  defp expand({kind, name}, _opts) when kind in [:add, :remove, :gen] and is_atom(name) do
+  defp apply_step(igniter, {:queue, task, argv}) do
+    Igniter.add_task(igniter, task, argv ++ @queued_flags)
+  end
+
+  defp expand({:add, name}, _opts) when is_atom(name), do: add(name)
+
+  defp expand({:add, name, step_opts}, opts) when is_atom(name) do
+    if included?(step_opts, opts), do: add(name), else: :skip
+  end
+
+  defp expand({kind, name}, _opts) when kind in [:remove, :gen] and is_atom(name) do
     resolve!(kind, name)
   end
 
-  defp expand({kind, name, step_opts}, opts) when kind in [:add, :remove, :gen] do
+  defp expand({kind, name, step_opts}, opts) when kind in [:remove, :gen] do
     if included?(step_opts, opts), do: resolve!(kind, name), else: :skip
   end
 
@@ -151,6 +258,40 @@ defmodule Starter.Runner do
       flag -> Keyword.get(opts, flag, false)
     end
   end
+
+  # `{:add, name}` means "get this package into my app, correctly". Starter's
+  # own step wins when it has one; otherwise the package is installed and its
+  # own installer runs. Which path a package takes is upstream's business and
+  # changes over time, so it is not something a workflow file should encode —
+  # when a package gains an installer, its Starter step retires and workflows
+  # naming it keep working unchanged.
+  defp add(name) do
+    case Starter.Steps.resolve(:add, name) do
+      {:ok, module} ->
+        {:module, module}
+
+      # Falling through to an install means a typo'd step name would become a
+      # doomed Hex lookup, so names that closely resemble a built-in step are
+      # treated as mistakes rather than package names.
+      :error ->
+        case Enum.filter(Starter.Steps.names(:add), &similar?(&1, to_string(name))) do
+          [] ->
+            {:install, name}
+
+          suggestions ->
+            Mix.raise("""
+            Unknown add step: #{inspect(name)}
+
+            Did you mean: #{Enum.join(suggestions, ", ")}?
+
+            Names that are not built-in steps are installed as packages, but \
+            #{inspect(name)} looks like a typo rather than a package name.
+            """)
+        end
+    end
+  end
+
+  defp similar?(step, name), do: String.jaro_distance(step, name) > 0.85
 
   defp resolve!(kind, name) do
     case Starter.Steps.resolve(kind, name) do
