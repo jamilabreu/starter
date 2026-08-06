@@ -1,7 +1,5 @@
 # Starter
 
-> Your Phoenix starting point, in your repo.
-
 [![CI](https://github.com/jamilabreu/starter/actions/workflows/ci.yml/badge.svg)](https://github.com/jamilabreu/starter/actions/workflows/ci.yml)
 [![Hex.pm](https://img.shields.io/hexpm/v/starter.svg)](https://hex.pm/packages/starter)
 [![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/starter)
