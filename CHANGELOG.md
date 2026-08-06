@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-08-06
+
+All of these land on top of 0.2.0's single-verb change, and the first is
+serious enough to make 0.2.0 worth skipping.
 
 ### Fixed
 
@@ -13,9 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `--oban-pro` failed with `Ecto.MigrationError: migration version ... is
   duplicated`. Starter tracked its own migration timestamps but had no way to
   see one a package's installer created — fine in 0.1.x, where installers ran
-  in a separate subprocess seconds later, but installers now compose into the
-  same run and can land in the same second. Timestamps are now advanced past
-  every migration actually present, whoever wrote it.
+  in a separate subprocess seconds later, but 0.2.0 made installers compose
+  into the same run, where they can land in the same second. Timestamps are
+  now advanced past every migration actually present, whoever wrote it.
 
 - **The Tailwind class formatter never ran.** It guarded on
   `Code.ensure_loaded?(MyAppWeb.Formatters.ClassFormatter)`, but
@@ -25,9 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   both fixes the sorting and makes formatting identical whether or not the app
   is built.
 
-- The `oban_pro` step guarded on the `oban` *dependency*, which 0.2.0 made
-  meaningless: a workflow adds every package it installs to `mix.exs` before
-  any step runs, so the check passed while `oban.install` had yet to compose.
+- The `oban_pro` step guarded on the `oban` *dependency*, which 0.2.0's
+  in-run installs made meaningless: a workflow adds every package it installs
+  to `mix.exs` before any step runs, so the check passed while `oban.install`
+  had yet to compose.
   `{:add, :oban_pro}` placed before `{:add, :oban}` would proceed as if Oban
   were set up and write config for Oban's installer to clobber. It now checks
   for Oban's config — what `oban.install` actually writes — so it stays
