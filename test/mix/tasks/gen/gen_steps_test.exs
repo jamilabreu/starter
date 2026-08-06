@@ -235,6 +235,33 @@ defmodule Mix.Tasks.Starter.Gen.StepsTest do
     end
   end
 
+  describe "tailwind_formatter" do
+    # Regression: the step arms attribute_formatters in .formatter.exs
+    # immediately, but the formatter source is only in-memory until the run
+    # applies — unless the step loads the module itself, every HEEx format
+    # for the rest of the run logs "module ... is not loaded and could not
+    # be found" and skips class sorting.
+    test "loads the class formatter module during the run" do
+      igniter = Igniter.compose_task(test_project(), Mix.Tasks.Starter.Gen.TailwindFormatter)
+
+      assert Code.ensure_loaded?(TestWeb.Formatters.ClassFormatter)
+      assert diff(igniter, only: ".formatter.exs") =~ "attribute_formatters"
+    end
+
+    test "loaded formatter sorts classes, state prefixes last" do
+      Igniter.compose_task(test_project(), Mix.Tasks.Starter.Gen.TailwindFormatter)
+
+      # Resolved at runtime — the module only exists once the step compiles it.
+      formatter = Module.concat([TestWeb, Formatters, ClassFormatter])
+
+      assert {"class", {:string, "flex p-2 hover:bg-red-500", []}, %{}} =
+               formatter.render_attribute(
+                 {"class", {:string, "p-2 hover:bg-red-500 flex", []}, %{}},
+                 []
+               )
+    end
+  end
+
   describe "gigalixir" do
     test "creates deployment files without the Oban Pro hook by default" do
       igniter = Igniter.compose_task(phx_test_project(), Mix.Tasks.Starter.Gen.Gigalixir)

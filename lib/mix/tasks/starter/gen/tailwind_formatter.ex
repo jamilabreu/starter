@@ -65,7 +65,26 @@ defmodule Mix.Tasks.Starter.Gen.TailwindFormatter do
     end
     """
 
+    load_class_formatter(path, app_web_name, content)
     Igniter.create_new_file(igniter, path, content)
+  end
+
+  # The config below arms attribute_formatters for the rest of the run, but
+  # the formatter's source reaches disk only when the run applies — so the
+  # require guard generated into .formatter.exs can't load it mid-run
+  # (File.exists? is false), and every HEEx format until then logs
+  # "module ... is not loaded and could not be found" and skips sorting.
+  # Loading the module into this VM up front keeps the run quiet and makes
+  # class sorting apply to the run's own output. The on-disk file wins over
+  # the template so a user-edited formatter is the one that runs.
+  defp load_class_formatter(path, app_web_name, content) do
+    module = Module.concat([app_web_name, "Formatters", "ClassFormatter"])
+
+    cond do
+      Code.ensure_loaded?(module) -> :ok
+      File.exists?(path) -> Code.require_file(path)
+      true -> Code.compile_string(content)
+    end
   end
 
   defp add_formatter_config(igniter) do
