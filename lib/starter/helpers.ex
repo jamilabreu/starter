@@ -54,7 +54,7 @@ defmodule Starter.Helpers do
   @doc """
   Generates a migration with a unique timestamp.
 
-  Ecto refuses to run duplicate migration versions, and a workflow can create
+  Ecto refuses to run duplicate migration versions, and a starter can create
   several within the same second, so the timestamp is advanced past every
   migration already present.
   """

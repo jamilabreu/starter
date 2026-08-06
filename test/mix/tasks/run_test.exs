@@ -1,30 +1,30 @@
-defmodule Mix.Tasks.StarterRunFixture.Workflow do
-  use Starter.Workflow
+defmodule Mix.Tasks.StarterRunFixture.Starter do
+  use Starter
 
-  @impl Starter.Workflow
+  @impl Starter
   def steps, do: []
 end
 
-defmodule StarterRunFixture.NotAWorkflow do
+defmodule StarterRunFixture.NotAStarter do
   def hello, do: :world
 end
 
 defmodule Mix.Tasks.Starter.RunTest do
   use ExUnit.Case, async: true
 
-  test "find_workflow_modules keeps only workflow task modules" do
+  test "find_starter_modules keeps only starter task modules" do
     modules = [
-      Mix.Tasks.StarterRunFixture.Workflow,
-      StarterRunFixture.NotAWorkflow,
+      Mix.Tasks.StarterRunFixture.Starter,
+      StarterRunFixture.NotAStarter,
       String,
       Mix.Tasks.Starter.Run
     ]
 
-    assert Mix.Tasks.Starter.Run.find_workflow_modules(modules) ==
-             [Mix.Tasks.StarterRunFixture.Workflow]
+    assert Mix.Tasks.Starter.Run.find_starter_modules(modules) ==
+             [Mix.Tasks.StarterRunFixture.Starter]
   end
 
-  test "raises with guidance when no workflow exists" do
+  test "raises with guidance when no starter exists" do
     assert_raise Mix.Error, ~r/mix starter\.new/, fn ->
       Mix.Tasks.Starter.Run.run([])
     end

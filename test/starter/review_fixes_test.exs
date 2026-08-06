@@ -67,25 +67,25 @@ defmodule Starter.ReviewFixesTest do
     end
   end
 
-  describe "workflow step forms" do
-    defmodule TaskWorkflow do
-      use Starter.Workflow
+  describe "starter step forms" do
+    defmodule TaskStarter do
+      use Starter
 
-      @impl Starter.Workflow
+      @impl Starter
       def steps, do: [{:task, "format"}]
     end
 
-    defmodule InstallWorkflow do
-      use Starter.Workflow
+    defmodule InstallStarter do
+      use Starter
 
-      @impl Starter.Workflow
+      @impl Starter
       def steps, do: [{:install, :ash}, {:install, :oban_pro, if: :oban_pro}]
     end
 
-    defmodule QueueWorkflow do
-      use Starter.Workflow
+    defmodule QueueStarter do
+      use Starter
 
-      @impl Starter.Workflow
+      @impl Starter
       def steps do
         [
           {:install, :oban},
@@ -95,13 +95,13 @@ defmodule Starter.ReviewFixesTest do
     end
 
     test "non-Igniter {:task, ...} steps warn instead of silently no-oping" do
-      igniter = Starter.Runner.run(test_project(), TaskWorkflow, [])
+      igniter = Starter.Runner.run(test_project(), TaskStarter, [])
 
       assert Enum.any?(igniter.warnings, &(&1 =~ "not an Igniter task"))
     end
 
     test "{:install, pkg} resolves in-run rather than queueing a subprocess" do
-      igniter = Starter.Runner.run(test_project(), InstallWorkflow, [])
+      igniter = Starter.Runner.run(test_project(), InstallStarter, [])
 
       # Installs are composed into this run, so nothing is handed to a
       # subprocess — the old `igniter.install` queueing is gone.
@@ -109,25 +109,25 @@ defmodule Starter.ReviewFixesTest do
     end
 
     test "{:install, pkg} honors flags when resolving packages" do
-      assert Starter.Runner.installs(InstallWorkflow) == [:ash]
-      assert Starter.Runner.installs(InstallWorkflow, oban_pro: true) == [:ash, :oban_pro]
+      assert Starter.Runner.installs(InstallStarter) == [:ash]
+      assert Starter.Runner.installs(InstallStarter, oban_pro: true) == [:ash, :oban_pro]
     end
 
     test "{:queue, ...} still queues, honoring flags" do
-      igniter = Starter.Runner.run(test_project(), QueueWorkflow, oban_pro: true)
+      igniter = Starter.Runner.run(test_project(), QueueStarter, oban_pro: true)
 
       tasks = Enum.map(igniter.tasks, fn {task, _argv} -> task end)
       assert tasks == ["starter.add"]
 
-      # Exactly the task args plus --yes: the workflow's own flags must not
+      # Exactly the task args plus --yes: the starter's own flags must not
       # leak into subprocess argv (strict option parsers reject them).
       assert {_, ["oban_pro", "--yes"]} =
                Enum.find(igniter.tasks, fn {task, _} -> task == "starter.add" end)
 
-      without_flag = Starter.Runner.run(test_project(), QueueWorkflow, [])
+      without_flag = Starter.Runner.run(test_project(), QueueStarter, [])
       refute Enum.any?(without_flag.tasks, fn {task, _} -> task == "starter.add" end)
 
-      assert Starter.Workflow.flags_of(QueueWorkflow) == [:oban_pro]
+      assert Starter.flags_of(QueueStarter) == [:oban_pro]
     end
   end
 

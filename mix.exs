@@ -1,7 +1,7 @@
 defmodule Starter.MixProject do
   use Mix.Project
 
-  @version "0.2.1"
+  @version "0.3.0"
   @source_url "https://github.com/jamilabreu/starter"
 
   def project do
@@ -10,7 +10,7 @@ defmodule Starter.MixProject do
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
-      description: "Composable setup workflows for Phoenix applications, built on Igniter",
+      description: "Composable project starters for Phoenix applications, built on Igniter",
       source_url: @source_url,
       deps: deps(),
       package: package(),

@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
     else
       Igniter.add_warning(igniter, """
       oban_pro extends an Oban setup that isn't here yet: no `config :app, \
-      Oban` was found. Put {:add, :oban} before this step in your workflow \
+      Oban` was found. Put {:add, :oban} before this step in your starter \
       so Oban's own installer runs first, or run `mix igniter.install oban` \
       and re-run this step.
       """)
@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
   end
 
   # Deliberately checks for Oban's *config*, not its dependency. Packages a
-  # workflow installs are added to mix.exs before any step runs, so a dep
+  # starter installs are added to mix.exs before any step runs, so a dep
   # check would pass while `oban.install` has yet to compose — it answers
   # "will oban be a dep?" rather than "is Oban set up?". Its config is what
   # oban.install writes, so this stays honest about ordering.

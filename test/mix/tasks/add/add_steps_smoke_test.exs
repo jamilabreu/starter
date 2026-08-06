@@ -131,7 +131,7 @@ defmodule Mix.Tasks.Starter.Add.SmokeTest do
     refute diff(igniter, only: "mix.exs") =~ ":oban_pro"
   end
 
-  # A workflow adds every package it installs to mix.exs before any step runs,
+  # A starter adds every package it installs to mix.exs before any step runs,
   # so the dep alone says nothing about whether oban.install has composed yet.
   # Guarding on the dep would let this through and clobber Oban's config.
   test "oban_pro warns and skips when oban is a dep but not yet configured" do

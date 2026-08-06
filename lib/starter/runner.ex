@@ -1,8 +1,8 @@
 defmodule Starter.Runner do
   @moduledoc """
-  Expands and runs a workflow's steps against an igniter.
+  Expands and runs a starter's steps against an igniter.
 
-  You rarely call this directly — `use Starter.Workflow` wires it up for you.
+  You rarely call this directly — `use Starter` wires it up for you.
   """
 
   # Starter supports only the latest stable Phoenix. The check version is a
@@ -14,22 +14,22 @@ defmodule Starter.Runner do
   # Igniter runs queued tasks via Mix.shell().cmd, which has no stdin — a
   # prompting subprocess would stall forever waiting for input that can
   # never arrive, so queued tasks always run with --yes (confirming the
-  # workflow is the approval for what it queues). Nothing else is forwarded:
-  # the workflow's custom flags have already done their job selecting steps,
+  # starter is the approval for what it queues). Nothing else is forwarded:
+  # the starter's custom flags have already done their job selecting steps,
   # and leaking them crashes queued tasks with strict option parsers.
   # Installs no longer go through here — see prepare_installs/2.
   @queued_flags ["--yes"]
 
   @doc """
-  Runs every step of `workflow` in order, skipping optional steps whose
+  Runs every step of `starter` in order, skipping optional steps whose
   flag is absent from `opts`.
 
   Warns when the target app's Phoenix requirement is older than the
   supported series (#{@supported_phoenix_series}).
   """
   @spec run(Igniter.t(), module(), keyword()) :: Igniter.t()
-  def run(igniter, workflow, opts \\ []) when is_atom(workflow) do
-    steps = expand_all(workflow, opts)
+  def run(igniter, starter, opts \\ []) when is_atom(starter) do
+    steps = expand_all(starter, opts)
 
     igniter
     |> check_phoenix_version()
@@ -73,27 +73,27 @@ defmodule Starter.Runner do
   end
 
   @doc """
-  Returns the packages a run of `workflow` would install, in step order,
+  Returns the packages a run of `starter` would install, in step order,
   with optional steps resolved against `opts`.
 
   These are added to `mix.exs` and fetched before any step runs, so this is
   the set whose dependency changes reach disk ahead of the run's diff.
   """
   @spec installs(module(), keyword()) :: [atom()]
-  def installs(workflow, opts \\ []) when is_atom(workflow) do
-    for {:install, package} <- expand_all(workflow, opts), do: package
+  def installs(starter, opts \\ []) when is_atom(starter) do
+    for {:install, package} <- expand_all(starter, opts), do: package
   end
 
-  # Flattens nested workflows and drops skipped steps, so the whole run is a
+  # Flattens nested starters and drops skipped steps, so the whole run is a
   # single ordered list. Installs need to be known up front (see
   # prepare_installs/2), which means resolving nesting before applying
   # anything.
-  defp expand_all(workflow, opts) do
-    workflow.steps()
+  defp expand_all(starter, opts) do
+    starter.steps()
     |> Enum.map(&expand(&1, opts))
     |> Enum.flat_map(fn
       :skip -> []
-      {:workflow, module} -> expand_all(module, opts)
+      {:starter, module} -> expand_all(module, opts)
       step -> [step]
     end)
   end
@@ -176,7 +176,7 @@ defmodule Starter.Runner do
     Igniter.compose_task(igniter, task, argv, fn igniter ->
       Igniter.add_warning(igniter, """
       Step {:task, #{inspect(task)}} was skipped: `mix #{task}` is not an \
-      Igniter task, so it cannot be composed into a workflow. Run it \
+      Igniter task, so it cannot be composed into a starter. Run it \
       directly instead: mix #{task} #{Enum.join(argv, " ")}
       """)
     end)
@@ -226,10 +226,10 @@ defmodule Starter.Runner do
     if included?(step_opts, opts), do: {:queue, task, argv}, else: :skip
   end
 
-  defp expand({:workflow, module}, _opts) when is_atom(module), do: {:workflow, module}
+  defp expand({:starter, module}, _opts) when is_atom(module), do: {:starter, module}
 
-  defp expand({:workflow, module, step_opts}, opts) when is_atom(module) do
-    if included?(step_opts, opts), do: {:workflow, module}, else: :skip
+  defp expand({:starter, module, step_opts}, opts) when is_atom(module) do
+    if included?(step_opts, opts), do: {:starter, module}, else: :skip
   end
 
   defp expand({:task, task}, _opts) when is_binary(task), do: {:task, task, []}
@@ -249,7 +249,7 @@ defmodule Starter.Runner do
   defp expand(module, _opts) when is_atom(module), do: {:module, module}
 
   defp expand(step, _opts) do
-    Mix.raise("Invalid workflow step: #{inspect(step)}")
+    Mix.raise("Invalid starter step: #{inspect(step)}")
   end
 
   defp included?(step_opts, opts) do
@@ -262,8 +262,8 @@ defmodule Starter.Runner do
   # `{:add, name}` means "get this package into my app, correctly". Starter's
   # own step wins when it has one; otherwise the package is installed and its
   # own installer runs. Which path a package takes is upstream's business and
-  # changes over time, so it is not something a workflow file should encode —
-  # when a package gains an installer, its Starter step retires and workflows
+  # changes over time, so it is not something a starter file should encode —
+  # when a package gains an installer, its Starter step retires and starters
   # naming it keep working unchanged.
   defp add(name) do
     case Starter.Steps.resolve(:add, name) do

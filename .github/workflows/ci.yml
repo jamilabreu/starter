@@ -61,7 +61,7 @@ jobs:
         run: |
           sed -i 's|{:phoenix,|{:starter, path: "../starter", only: :dev},\n      {:phoenix,|' mix.exs
           mix deps.get
-      - name: Generate and run the workflow
+      - name: Generate and run the starter
         working-directory: demo
         run: |
           set -euo pipefail
@@ -77,7 +77,7 @@ jobs:
         working-directory: demo
         run: |
           if grep -E "Nothing was modified|skipped (adding|removing|generating|mounting)|was skipped" starter_run.log; then
-            echo "A workflow step no-oped against fresh phx.new output (see warnings above)."
+            echo "A starter step no-oped against fresh phx.new output (see warnings above)."
             exit 1
           fi
       - name: App still compiles without warnings

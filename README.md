@@ -1,6 +1,6 @@
 # Starter
 
-> Your Phoenix starting point, as a workflow.
+> Your Phoenix starting point, in your repo.
 
 [![CI](https://github.com/jamilabreu/starter/actions/workflows/ci.yml/badge.svg)](https://github.com/jamilabreu/starter/actions/workflows/ci.yml)
 [![Hex.pm](https://img.shields.io/hexpm/v/starter.svg)](https://hex.pm/packages/starter)
@@ -8,19 +8,19 @@
 
 Every new Phoenix app begins the same way: run `mix phx.new`, then spend an
 hour undoing defaults you don't want and wiring in the packages you always
-use. **Starter** turns that hour into a *workflow* — an ordered, flag-aware
+use. **Starter** turns that hour into a *starter* — an ordered, flag-aware
 list of steps that lives in your project — built on
 [Igniter](https://hexdocs.pm/igniter), so every change is applied as a
 reviewable patch rather than a blind file overwrite.
 
-Your workflow is a plain module in your own project — generated for you by
+Your starter is a plain module in your own project — generated for you by
 `mix starter.new`, then edited to taste:
 
 ```elixir
-defmodule Mix.Tasks.MyApp.Workflow do
-  use Starter.Workflow
+defmodule Mix.Tasks.MyApp.Starter do
+  use Starter
 
-  @impl Starter.Workflow
+  @impl Starter
   def steps do
     [
       {:remove, :daisy_ui},                  # undo a phx.new default
@@ -58,7 +58,7 @@ Add `starter` to your deps in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:starter, "~> 0.1", only: :dev},
+    {:starter, "~> 0.3", only: :dev},
     # ...
   ]
 end
@@ -68,13 +68,13 @@ end
 mix deps.get
 ```
 
-### 2. Generate your workflow
+### 2. Generate your starter
 
 ```bash
 mix starter.new
 ```
 
-This creates **`lib/mix/tasks/my_app.workflow.ex`** — your workflow. It lists
+This creates **`lib/mix/tasks/my_app.starter.ex`** — your starter. It lists
 every built-in step in a sensible order, each with a one-line description of
 what it does. Open it and make it yours:
 
@@ -92,7 +92,7 @@ mix starter.run
 Nothing is applied blindly. The run prints a plan showing what every step
 resolved to, then shows all its changes — your steps and any package
 installers together — as one diff you confirm once. (`mix starter.run` finds
-and runs your workflow task; invoking it directly as `mix my_app.workflow`
+and runs your starter task; invoking it directly as `mix my_app.starter`
 does the same thing.)
 
 The one thing that happens before that confirmation is dependencies: packages
@@ -105,17 +105,17 @@ mix ecto.setup
 mix phx.server
 ```
 
-> **Note:** the generated workflow enables the `vector` Postgres extension via
+> **Note:** the generated starter enables the `vector` Postgres extension via
 > the `pg_extensions` and `pgvector` steps. If your local Postgres doesn't
 > have [pgvector](https://github.com/pgvector/pgvector) installed, either
-> install it or delete those two steps from your workflow.
+> install it or delete those two steps from your starter.
 
-Keep the workflow file in your repo: it documents exactly how your app was set
+Keep the starter file in your repo: it documents exactly how your app was set
 up, and it's the file you'll copy into your next project.
 
 ### Running single steps
 
-Every step also works on its own, no workflow required:
+Every step also works on its own, no starter required:
 
 ```bash
 mix starter.add credo,quokka    # install + configure packages
@@ -145,7 +145,7 @@ mix starter.new --yes && mix starter.run --yes
   installers, ordering steps, optional flags, and keeping the whole ritual
   versioned in your repo.
 - **A boilerplate/template repo?** Templates fork away from `phx.new` and
-  rot. A workflow replays your preferences on top of whatever `phx.new`
+  rot. A starter replays your preferences on top of whatever `phx.new`
   currently generates.
 
 ## Built-in steps
@@ -168,7 +168,7 @@ Igniter installer** — `oban`, `tidewave`, `ash` and friends run upstream's
 installer, so upstream stays the authority. Built-in `add` steps exist only
 where upstream ships nothing, and each does the minimum wiring a missing
 installer would do. When a package later ships an installer, its step here
-retires and workflows naming it keep working unchanged — that's the point of
+retires and starters naming it keep working unchanged — that's the point of
 the single verb.
 
 (`{:install, :name}` still exists, and forces upstream's installer even when
@@ -223,32 +223,39 @@ defmodule MyApp.Steps.DeployConfig do
 end
 ```
 
-Reference it directly in your workflow's step list. `Starter.Helpers` and
+Reference it directly in your starter's step list. `Starter.Helpers` and
 `Starter.Versions` provide conveniences for common patterns (app/repo module
 names, checked file edits, migration timestamps, latest-version lookups).
 
-## Sharing workflows
+## Sharing starters
 
-Workflows are modules, so they compose and travel. Keep your personal or
+Starters are modules, so they compose and travel. Keep your personal or
 team ritual in a small "step pack" — a dev-dep containing custom steps and a
-shared workflow module — and generate each new app's workflow from it:
+shared starter module — and generate each new app's starter from it:
 
 ```bash
-mix starter.new --from MyTeam.Workflow
+mix starter.new --from MyTeam.Starter
 ```
 
-The generated file *expands* the shared workflow's steps, so the app owns
+The generated file *expands* the shared starter's steps, so the app owns
 and documents its setup while your pack stays the template. Shared
-workflows can also be included directly:
+starters can also be included directly:
 
 ```elixir
 def steps do
   [
-    {:workflow, MyTeam.Baseline},
+    {:starter, MyTeam.Baseline},
     {:add, :pgvector}
   ]
 end
 ```
+
+Composition is tree-shaped, not just flat: an included starter can include
+starters itself, to any depth, and an include can be flag-gated
+(`{:starter, MyTeam.Auth, if: :auth}`). At run time the tree is flattened
+depth-first into one ordered step list — packages from the whole tree are
+deduped and fetched up front, a single diff covers the entire run, and flags
+declared anywhere in the tree surface on the task you invoke.
 
 Steps apply in list order, package installers included, so a step that patches
 what an installer wrote just goes after it:
@@ -264,14 +271,14 @@ against the applied project on disk, after everything else.
 ## Compatibility
 
 Starter supports **only the latest stable Phoenix** (currently 1.8) and its
-`phx.new` output. Workflows warn when run against an app on an older Phoenix.
-CI runs the generated workflow against a freshly generated `phx.new` app on
+`phx.new` output. Starters warn when run against an app on an older Phoenix.
+CI runs the generated starter against a freshly generated `phx.new` app on
 every commit, so generator drift breaks loudly here instead of silently in
 your project.
 
 ## Roadmap
 
-- A community workflow registry
+- A community starter registry
 
 Contributions welcome — a step is a small, self-contained module with tests,
 and adding one is a great first PR.

@@ -1,14 +1,14 @@
-defmodule StarterNewFixture.SharedWorkflow do
-  use Starter.Workflow
+defmodule StarterNewFixture.SharedStarter do
+  use Starter
 
-  @impl Starter.Workflow
+  @impl Starter
   def steps do
     [
       {:remove, :topbar},
       {:add, :pgvector, if: :pgvector},
       {:install, :oban},
       {:queue, "starter_jamil.oban_tweaks"},
-      {:workflow, StarterNewFixture.NestedWorkflow},
+      {:starter, StarterNewFixture.NestedStarter},
       StarterNewFixture.CustomStep
     ]
   end
@@ -19,44 +19,44 @@ defmodule Mix.Tasks.Starter.NewTest do
 
   import Igniter.Test
 
-  defp generated_workflow do
+  defp generated_starter do
     igniter =
       test_project()
       |> Igniter.compose_task(Mix.Tasks.Starter.New)
 
-    assert_creates(igniter, "lib/mix/tasks/test.workflow.ex")
+    assert_creates(igniter, "lib/mix/tasks/test.starter.ex")
 
     igniter.rewrite
-    |> Rewrite.source!("lib/mix/tasks/test.workflow.ex")
+    |> Rewrite.source!("lib/mix/tasks/test.starter.ex")
     |> Rewrite.Source.get(:content)
   end
 
-  test "generates a syntactically valid workflow module" do
-    content = generated_workflow()
+  test "generates a syntactically valid starter module" do
+    content = generated_starter()
 
     assert {:ok, _ast} = Code.string_to_quoted(content)
-    assert content =~ "defmodule Mix.Tasks.Test.Workflow do"
-    assert content =~ "use Starter.Workflow"
+    assert content =~ "defmodule Mix.Tasks.Test.Starter do"
+    assert content =~ "use Starter"
   end
 
   test "guards the module so other envs compile without starter" do
-    content = generated_workflow()
+    content = generated_starter()
 
-    assert content =~ "if Code.ensure_loaded?(Starter.Workflow) do"
+    assert content =~ "if Code.ensure_loaded?(Starter) do"
     # The guard must wrap the defmodule, not sit inside it
     assert :binary.match(content, "if Code.ensure_loaded?") <
-             :binary.match(content, "defmodule Mix.Tasks.Test.Workflow")
+             :binary.match(content, "defmodule Mix.Tasks.Test.Starter")
   end
 
   test "generated source is formatted" do
-    content = generated_workflow()
+    content = generated_starter()
 
     formatted = content |> Code.format_string!() |> IO.iodata_to_binary() |> Kernel.<>("\n")
     assert content == formatted
   end
 
   test "every step carries its description from the module's @shortdoc" do
-    content = generated_workflow()
+    content = generated_starter()
 
     assert content =~ "# #{Mix.Task.shortdoc(Mix.Tasks.Starter.Remove.DaisyUi)}\n"
     assert content =~ "# #{Mix.Task.shortdoc(Mix.Tasks.Starter.Add.Pgvector)}\n"
@@ -65,9 +65,9 @@ defmodule Mix.Tasks.Starter.NewTest do
 
   # Packages with their own installers are written as {:add, ...} like any
   # other, and say so in the generated comment — whether a package has an
-  # installer is not something the workflow file should encode.
+  # installer is not something the starter file should encode.
   test "packages with their own installers are ordinary {:add, ...} steps" do
-    content = generated_workflow()
+    content = generated_starter()
 
     assert content =~ "{:add, :oban}"
     assert content =~ "{:add, :oban_web}"
@@ -77,7 +77,7 @@ defmodule Mix.Tasks.Starter.NewTest do
   end
 
   test "optional steps document their flag" do
-    content = generated_workflow()
+    content = generated_starter()
 
     assert content =~ "(only with --oban-pro)"
     assert content =~ "{:add, :oban_pro, if: :oban_pro}"
@@ -85,7 +85,7 @@ defmodule Mix.Tasks.Starter.NewTest do
   end
 
   test "oban_pro follows oban, whose installer it patches" do
-    content = generated_workflow()
+    content = generated_starter()
 
     {oban_pos, _} = :binary.match(content, "{:add, :oban}")
     {pro_pos, _} = :binary.match(content, "{:add, :oban_pro")
@@ -93,7 +93,7 @@ defmodule Mix.Tasks.Starter.NewTest do
   end
 
   test "sort_deps runs in-run and last, so it sorts installer-added deps" do
-    content = generated_workflow()
+    content = generated_starter()
 
     assert content =~ "{:gen, :sort_deps}"
     refute content =~ ~s({:queue, "starter.gen.sort_deps")
@@ -109,17 +109,17 @@ defmodule Mix.Tasks.Starter.NewTest do
         test_project()
         |> Igniter.compose_task(Mix.Tasks.Starter.New, [
           "--from",
-          "StarterNewFixture.SharedWorkflow"
+          "StarterNewFixture.SharedStarter"
         ])
 
-      assert_creates(igniter, "lib/mix/tasks/test.workflow.ex")
+      assert_creates(igniter, "lib/mix/tasks/test.starter.ex")
 
       igniter.rewrite
-      |> Rewrite.source!("lib/mix/tasks/test.workflow.ex")
+      |> Rewrite.source!("lib/mix/tasks/test.starter.ex")
       |> Rewrite.Source.get(:content)
     end
 
-    test "expands the shared workflow's steps instead of the catalog" do
+    test "expands the shared starter's steps instead of the catalog" do
       content = generated_from_shared()
 
       assert {:ok, _} = Code.string_to_quoted(content)
@@ -127,24 +127,24 @@ defmodule Mix.Tasks.Starter.NewTest do
       assert content =~ "{:add, :pgvector, if: :pgvector}"
       assert content =~ "{:install, :oban}"
       assert content =~ ~s({:queue, "starter_jamil.oban_tweaks", []})
-      assert content =~ "{:workflow, StarterNewFixture.NestedWorkflow}"
+      assert content =~ "{:starter, StarterNewFixture.NestedStarter}"
       assert content =~ "StarterNewFixture.CustomStep"
-      assert content =~ "from `StarterNewFixture.SharedWorkflow`"
+      assert content =~ "from `StarterNewFixture.SharedStarter`"
       # Catalog-only steps are absent
       refute content =~ ":daisy_ui"
       refute content =~ ":gigalixir"
     end
 
-    test "raises with guidance for non-workflow modules" do
-      assert_raise Mix.Error, ~r/is not a Starter workflow/, fn ->
+    test "raises with guidance for non-starter modules" do
+      assert_raise Mix.Error, ~r/is not a starter/, fn ->
         test_project()
         |> Igniter.compose_task(Mix.Tasks.Starter.New, ["--from", "String"])
       end
     end
   end
 
-  test "the generated workflow references only resolvable steps" do
-    content = generated_workflow()
+  test "the generated starter references only resolvable steps" do
+    content = generated_starter()
 
     # {:add, ...} is exempt: a name with no built-in step is installed as a
     # package, which is how oban and friends appear here.
@@ -153,7 +153,7 @@ defmodule Mix.Tasks.Starter.NewTest do
       kind = String.to_existing_atom(kind)
 
       assert {:ok, _module} = Starter.Steps.resolve(kind, name),
-             "generated workflow references unknown step {:#{kind}, :#{name}}"
+             "generated starter references unknown step {:#{kind}, :#{name}}"
     end)
   end
 end

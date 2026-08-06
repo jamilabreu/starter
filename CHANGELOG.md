@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-06
+
+### Changed
+
+- **The thing you define is now called a *starter*, not a workflow**
+  ([#2](https://github.com/jamilabreu/starter/issues/2)). "Workflow" is an
+  overloaded term; "starter" is the library's own word, and now it is the
+  API's word too:
+
+    * `use Starter.Workflow` → `use Starter` — the behaviour moved into the
+      top-level module (`@impl Starter`), and `Starter.Workflow.flags/1` and
+      `flags_of/1` became `Starter.flags/1` and `Starter.flags_of/1`
+    * `mix starter.new` generates `lib/mix/tasks/<app>.starter.ex` defining
+      `Mix.Tasks.<App>.Starter`, runnable as `mix <app>.starter`
+    * Including another starter's steps is `{:starter, SomeSharedStarter}`,
+      previously `{:workflow, ...}`
+    * `mix starter.run`'s discovery, docs, and error messages follow suit
+
+  To upgrade an existing project, run `mix starter.new` again — or rename
+  `lib/mix/tasks/<app>.workflow.ex` to `<app>.starter.ex` and update the
+  module name, `use`/`@impl`, the `Code.ensure_loaded?` guard, and any
+  `{:workflow, ...}` steps to match. Old generated files don't break the
+  build — their `Code.ensure_loaded?(Starter.Workflow)` guard now compiles
+  them to nothing — but `mix starter.run` won't find them until updated.
+
 ## [0.2.1] - 2026-08-06
 
 All of these land on top of 0.2.0's single-verb change, and the first is
