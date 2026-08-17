@@ -188,7 +188,7 @@ Starter has a step of that name. You rarely want it.)
 | add | `pgvector` | Vector search: dep, Postgrex types, config, extension migration (merges into existing extensions migration) |
 | add | `quokka` | Credo-configured formatter plugin |
 | add | `remixicons` | Remix Icons as a Tailwind plugin with `remix-*` classes and a CoreComponents `icon` clause |
-| add | `tidewave_mcp` | Creates `.mcp.json` pointing at a local Tidewave MCP server (upstream's own installer wires the rest; see `{:install, :tidewave}`) |
+| add | `tidewave_config` | Creates `.mcp.json` pointing at a local Tidewave MCP server (upstream's own installer wires the rest; see `{:add, :tidewave}`) |
 | add | `uuidv7` | Time-sortable UUID primary keys; updates your `Schema` module when present |
 | remove | `agents_md` | Removes the generated `AGENTS.md` |
 | remove | `daisy_ui` | Removes the `:daisyui` Mix dependency and CSS plugin blocks |

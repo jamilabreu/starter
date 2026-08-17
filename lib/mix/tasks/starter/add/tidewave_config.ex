@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Starter.Add.TidewaveMcp do
+defmodule Mix.Tasks.Starter.Add.TidewaveConfig do
   @shortdoc "Adds a Tidewave MCP server config"
   @moduledoc """
   Creates `.mcp.json` pointing at a local Tidewave MCP server.
