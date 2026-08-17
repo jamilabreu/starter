@@ -186,15 +186,25 @@ defmodule Starter.Runner do
   # left is the package's own installer, if it ships one. Composing it here
   # puts its changes in this run's diff, at this position in the step list.
   defp apply_step(igniter, {:install, package}) do
-    case Mix.Task.get("#{package}.install") do
-      nil -> igniter
-      task -> Igniter.compose_task(igniter, task, [])
-    end
+    igniter =
+      case Mix.Task.get("#{package}.install") do
+        nil -> igniter
+        task -> Igniter.compose_task(igniter, task, [])
+      end
+
+    patch_install(igniter, package)
   end
 
   defp apply_step(igniter, {:queue, task, argv}) do
     Igniter.add_task(igniter, task, argv ++ @queued_flags)
   end
+
+  # oban_web's installer wires up the router but doesn't add itself to
+  # import_deps, so its formatter directives never run without this.
+  defp patch_install(igniter, :oban_web),
+    do: Igniter.Project.Formatter.import_dep(igniter, :oban_web)
+
+  defp patch_install(igniter, _package), do: igniter
 
   defp expand({:add, name}, _opts) when is_atom(name), do: add(name)
 

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-16
+
+### Added
+
+- `{:add, :tidewave_mcp}` step, which creates a `.mcp.json` file pointing at
+  a local Tidewave MCP server. Named separately from `tidewave` since
+  upstream ships its own Igniter installer for the dependency and plug; use
+  `{:install, :tidewave}` for that, and this step if you only need the MCP
+  config.
+
+### Fixed
+
+- `{:install, :oban_web}` now adds `oban_web` to `import_deps` in
+  `.formatter.exs`. Upstream's installer wires up the router but doesn't add
+  itself to `import_deps`, so its formatter directives never ran without
+  this.
+
 ## [0.3.2] - 2026-08-06
 
 ### Fixed
