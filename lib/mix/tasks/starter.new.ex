@@ -65,6 +65,9 @@ defmodule Mix.Tasks.Starter.New do
        {:add, :oban},
        {:add, :oban_web},
        {:add, :tidewave},
+       # tidewave's own installer only wires the plug — it writes no MCP
+       # config, so this follows it in the list to fill that gap.
+       {:add, :tidewave_config},
        # Patches what oban's installer wrote, so it follows it in the list.
        {:add, :oban_pro, if: :oban_pro}
      ]},

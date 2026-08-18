@@ -102,6 +102,43 @@ defmodule StarterTest do
     end
   end
 
+  describe "oban_web patch" do
+    defmodule ObanWebStarter do
+      use Starter
+
+      @impl Starter
+      def steps do
+        [{:install, :oban_web}]
+      end
+    end
+
+    test "drops parens from the router's oban_dashboard call and adds import_deps" do
+      igniter =
+        Starter.Runner.run(
+          test_project(
+            files: %{
+              "lib/test_web/router.ex" => """
+              defmodule TestWeb.Router do
+                use TestWeb, :router
+
+                scope "/" do
+                  oban_dashboard("/oban")
+                end
+              end
+              """
+            }
+          ),
+          ObanWebStarter,
+          []
+        )
+
+      router_diff = Igniter.Test.diff(igniter, only: "lib/test_web/router.ex")
+      assert router_diff =~ "+ |    oban_dashboard \"/oban\""
+
+      assert Igniter.Test.diff(igniter, only: ".formatter.exs") =~ ":oban_web"
+    end
+  end
+
   describe "Phoenix version guard" do
     defp project_with_phoenix(requirement) do
       test_project(

@@ -200,11 +200,31 @@ defmodule Starter.Runner do
   end
 
   # oban_web's installer wires up the router but doesn't add itself to
-  # import_deps, so its formatter directives never run without this.
-  defp patch_install(igniter, :oban_web),
-    do: Igniter.Project.Formatter.import_dep(igniter, :oban_web)
+  # import_deps, so its formatter directives never run without this. It also
+  # writes the oban_dashboard call with parens; `mix format` never strips
+  # parens from a call that already has them (only ever adds missing ones),
+  # so being in import_deps from here on doesn't retroactively fix this run's
+  # router — the call is rewritten directly instead.
+  defp patch_install(igniter, :oban_web) do
+    igniter
+    |> Igniter.Project.Formatter.import_dep(:oban_web)
+    |> drop_oban_dashboard_parens()
+  end
 
   defp patch_install(igniter, _package), do: igniter
+
+  defp drop_oban_dashboard_parens(igniter) do
+    app_name = Igniter.Project.Application.app_name(igniter)
+    path = "lib/#{app_name}_web/router.ex"
+
+    if Igniter.exists?(igniter, path) do
+      Starter.Helpers.update_file_content(igniter, path, fn content ->
+        String.replace(content, ~r/oban_dashboard\((.+)\)(\s*)$/m, "oban_dashboard \\1\\2")
+      end)
+    else
+      igniter
+    end
+  end
 
   defp expand({:add, name}, _opts) when is_atom(name), do: add(name)
 

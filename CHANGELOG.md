@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-08-18
+
+### Fixed
+
+- The default starter template now runs `{:add, :tidewave_config}` after
+  `{:add, :tidewave}`, so a fresh `mix starter.new`/`mix starter.run` creates
+  `.mcp.json`. `tidewave_config` was added in 0.4.1 but never wired into the
+  generated template — upstream's own `tidewave.install` only adds the plug,
+  so without this the MCP config was never created on a clean install.
+- `{:install, :oban_web}` no longer leaves `oban_dashboard("/oban")` with
+  parens in the router on a fresh run. `mix format` only ever adds missing
+  parens for names in `import_deps`/`locals_without_parens` — it never
+  strips parens from a call already written with them — so adding `oban_web`
+  to `import_deps` (the 0.4.1 fix) couldn't retroactively clean up the
+  parenthesized call the installer had already written earlier in the same
+  run. The router edit is now rewritten directly instead of relying on a
+  later format pass that was never going to touch it.
+
 ## [0.4.1] - 2026-08-17
 
 ### Fixed
