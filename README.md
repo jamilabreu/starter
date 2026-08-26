@@ -184,7 +184,7 @@ Starter has a step of that name. You rarely want it.)
 | add | `exsync` | Auto-recompilation on file changes (dev) |
 | add | `libcluster` | Node clustering: dep, supervision child, Gossip topology in dev |
 | add | `mix_test_watch` | Runs tests on file changes |
-| add | `oban_pro` | Oban Pro: Smart engine, dynamic plugins, migration (requires a license and an existing Oban setup) |
+| add | `oban_pro` | Oban Pro 1.8: Pro engine, Cron/Lifeline/Pruner/Queues services, migration (requires a license and an Oban 2.24+ setup) |
 | add | `pgvector` | Vector search: dep, Postgrex types, config, extension migration (merges into existing extensions migration) |
 | add | `quokka` | Credo-configured formatter plugin |
 | add | `remixicons` | Remix Icons as a Tailwind plugin with `remix-*` classes and a CoreComponents `icon` clause |

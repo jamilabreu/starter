@@ -23,9 +23,17 @@ defmodule Starter.Versions do
   Pre-1.0 versions keep all three segments (`"0.3.1"` → `"~> 0.3.1"`) because
   0.x minor bumps are breaking under SemVer convention; stable versions pin
   to the minor series (`"2.19.4"` → `"~> 2.19"`).
+
+  Pre-releases keep the full version (`"1.8.0-rc.1"` → `"~> 1.8.0-rc.1"`):
+  a plain `~> 1.8` never matches a pre-release, so the dep would fail to
+  resolve until the stable release lands. The pre-release form still admits
+  everything up to the next minor, including that stable release.
   """
   def requirement("0." <> _ = version), do: "~> #{version}"
-  def requirement(version), do: "~> #{major_minor(version)}"
+
+  def requirement(version) do
+    if String.contains?(version, "-"), do: "~> #{version}", else: "~> #{major_minor(version)}"
+  end
 
   @doc "Fetches the latest stable version string of a Hex package, or nil."
   def fetch_hex_version(package) do

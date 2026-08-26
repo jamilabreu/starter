@@ -37,13 +37,15 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
   defp add_dep(igniter) do
     requirement =
       case Starter.Versions.fetch_oban_pro_version() do
-        nil -> "~> 1.7"
+        nil -> "~> 1.8"
         version -> Starter.Versions.requirement(version)
       end
 
     Igniter.Project.Deps.add_dep(igniter, {:oban_pro, requirement, repo: "oban"})
   end
 
+  # Unversioned `up/0` runs every Pro migration through the current release,
+  # including v1.8's `oban_jobs_archive` table.
   defp add_migration(igniter) do
     repo = Helpers.repo(igniter)
 
@@ -55,28 +57,36 @@ defmodule Mix.Tasks.Starter.Add.ObanPro do
     Helpers.gen_migration(igniter, repo, "add_oban_pro", body: migration_body)
   end
 
+  # Oban 2.24 promoted cron, lifeline, pruner, and queues to top-level config
+  # keys, and Oban Pro 1.8 ships them as `Oban.Pro.Cron`, `.Lifeline`,
+  # `.Pruner`, and `.Queues` (the former Dynamic* plugins) plus
+  # `Oban.Pro.Engine` (formerly `Engines.Smart`). Each key is set on its own
+  # so what `oban.install` already wrote — the repo, and the lifeline/pruner
+  # defaults this overrides — is layered on rather than replaced wholesale.
+  # DynamicPrioritizer wasn't promoted and stays a plugin.
   defp edit_config(igniter) do
     app_name = Igniter.Project.Application.app_name(igniter)
-    repo = Helpers.repo(igniter)
 
-    opts =
-      {:code,
-       quote(
-         do: [
-           engine: Oban.Pro.Engines.Smart,
-           notifier: Oban.Notifiers.PG,
-           plugins: [
-             {Oban.Pro.Plugins.DynamicCron, [crontab: []]},
-             Oban.Pro.Plugins.DynamicLifeline,
-             Oban.Pro.Plugins.DynamicPrioritizer,
-             Oban.Pro.Plugins.DynamicPruner,
-             {Oban.Pro.Plugins.DynamicQueues,
-              [queues: [default: 10, webhooks: 20], sync_mode: :automatic]}
-           ],
-           repo: unquote(repo)
-         ]
-       )}
+    settings = [
+      engine: "Oban.Pro.Engine",
+      notifier: "Oban.Notifiers.PG",
+      cron: "{Oban.Pro.Cron, crontab: []}",
+      lifeline: "Oban.Pro.Lifeline",
+      pruner: "Oban.Pro.Pruner",
+      queues: "{Oban.Pro.Queues, sync_mode: :automatic, queues: [default: 10, webhooks: 20]}",
+      plugins: "[Oban.Pro.Plugins.DynamicPrioritizer]"
+    ]
 
-    Igniter.Project.Config.configure(igniter, "config.exs", app_name, [Oban], opts)
+    Enum.reduce(settings, igniter, fn {key, source}, igniter ->
+      code = Sourceror.parse_string!(source)
+
+      Igniter.Project.Config.configure(
+        igniter,
+        "config.exs",
+        app_name,
+        [Oban, key],
+        {:code, code}
+      )
+    end)
   end
 end

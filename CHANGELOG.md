@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-26
+
+### Changed
+
+- The `oban_pro` step follows Oban 2.24 and Oban Pro 1.8's installation
+  steps. Oban 2.24 promoted `cron`, `lifeline`, `pruner`, and `queues` to
+  top-level config keys, and Pro 1.8 ships them as `Oban.Pro.Cron`,
+  `Oban.Pro.Lifeline`, `Oban.Pro.Pruner`, and `Oban.Pro.Queues` (the former
+  `Dynamic*` plugins) alongside `Oban.Pro.Engine` (formerly
+  `Oban.Pro.Engines.Smart`). The step now writes that layout;
+  `DynamicPrioritizer`, which wasn't promoted, stays under `plugins`. The
+  offline fallback requirement is `~> 1.8`.
+- The step sets each Oban config key on its own instead of replacing the
+  whole `config :app, Oban` block, so what `oban.install` wrote — the repo,
+  and now its `lifeline`/`pruner` defaults, which Pro's services supersede —
+  is layered on rather than clobbered.
+
+### Fixed
+
+- `Starter.Versions.requirement/1` keeps the full version for pre-releases
+  (`"1.8.0-rc.1"` → `"~> 1.8.0-rc.1"`). It used to produce `~> 1.8`, which
+  never matches a pre-release, so `oban_pro` generated an unresolvable dep
+  while the docs site was built from a release candidate — as it is today.
+
 ## [0.4.2] - 2026-08-18
 
 ### Fixed

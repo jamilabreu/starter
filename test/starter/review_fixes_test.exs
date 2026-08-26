@@ -137,6 +137,7 @@ defmodule Starter.ReviewFixesTest do
       assert Starter.Versions.requirement("0.10.2") == "~> 0.10.2"
       assert Starter.Versions.requirement("1.0.0") == "~> 1.0"
       assert Starter.Versions.requirement("2.19.4") == "~> 2.19"
+      assert Starter.Versions.requirement("1.8.0-rc.1") == "~> 1.8.0-rc.1"
     end
 
     test "fetch_npm_versions never raises and maps failures to nil" do
